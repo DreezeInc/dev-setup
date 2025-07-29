@@ -19,7 +19,6 @@
       shell: xcode-select --install
       when: xcode_check.rc != 0
       register: xcode_install
-      failed_when: false
     
     - name: Wait for Xcode Command Line Tools installation (if triggered)
       pause:
@@ -52,7 +51,7 @@
       changed_when: false
     
     - name: Run GitHub authentication script
-      script: github_auth.sh
+      shell: bash ./github_auth.sh
       when: gh_auth_status.rc != 0
       register: gh_auth_result
     
