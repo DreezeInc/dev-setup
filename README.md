@@ -162,6 +162,8 @@ This playbook is designed to be **idempotent**, meaning you can safely run it mu
    ```bash
    ./quick-start.sh
    ```
+   
+   The script will ask for your password once at the beginning and cache it for the entire setup duration.
 
 ## macOS Apple Silicon Specific Features
 
@@ -208,6 +210,16 @@ The playbook intelligently handles different default branch names:
 - **Handles failures gracefully** - Can resume partial installations
 
 ## Troubleshooting
+
+### Password Handling
+The quick-start.sh script now handles password caching automatically. You'll be asked for your password once at the beginning, and it will be cached for the entire setup duration.
+
+This prevents multiple password prompts that would otherwise occur due to:
+- Homebrew installations requiring admin privileges
+- Installing apps via Homebrew Cask
+- Various system configurations needing elevated permissions
+
+The script uses a sudo keep-alive mechanism that refreshes every 60 seconds until the setup completes.
 
 ### Branch Not Found Error
 If you get a "pathspec did not match" error:

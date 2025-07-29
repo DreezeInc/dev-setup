@@ -97,7 +97,7 @@
       changed_when: false
     
     - name: Install Homebrew if not present
-      shell: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      shell: NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       when: brew_check.rc != 0
       register: homebrew_install
     

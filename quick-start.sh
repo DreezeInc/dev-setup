@@ -5,6 +5,32 @@
 
 echo "🍎 Developer Environment Setup - macOS Apple Silicon"
 echo "===================================================="
+echo ""
+
+# Setup sudo password caching to avoid multiple prompts
+echo "🔐 This setup requires administrator privileges for installing system tools."
+echo "   You'll be asked for your password once, and it will be cached for the entire setup."
+echo ""
+
+# Ask for the administrator password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until the script has finished
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+# Store the background job PID
+SUDO_PID=$!
+
+# Function to cleanup the sudo keep-alive on exit
+cleanup() {
+    kill $SUDO_PID 2>/dev/null
+}
+
+# Set trap to cleanup on script exit
+trap cleanup EXIT
+
+echo "✅ Password cached successfully."
+echo ""
 
 # Check if we're on macOS
 if [[ "$(uname)" != "Darwin" ]]; then
@@ -35,8 +61,8 @@ fi
 
 # Install Homebrew if not present (required for Ansible installation)
 if ! command -v brew &> /dev/null; then
-    echo "🍺 Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    echo "🍺 Installing Homebrew (non-interactively)..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     
     # Add Homebrew to PATH for Apple Silicon
     if [[ "$(uname -m)" == "arm64" ]]; then
