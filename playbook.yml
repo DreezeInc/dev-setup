@@ -1,0 +1,569 @@
+---
+- name: Developer Environment Setup - GitHub Repository + Development Tools (macOS Apple Silicon)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_url: "https://github.com/DreezeInc/dreeze-git-0.git"
+    dest_path: "~/code/dreeze"
+    repo_version: "main"  # Use master for octocat repository, or specify branch/tag/commit hash
+  
+  tasks:
+    - name: Check if Xcode Command Line Tools are installed
+      shell: xcode-select -p
+      register: xcode_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Xcode Command Line Tools if not present
+      shell: xcode-select --install
+      when: xcode_check.rc != 0
+      register: xcode_install
+      failed_when: false
+    
+    - name: Wait for Xcode Command Line Tools installation (if triggered)
+      pause:
+        prompt: "Please complete the Xcode Command Line Tools installation in the popup dialog, then press Enter to continue"
+      when: xcode_check.rc != 0 and xcode_install.rc == 0
+    
+    - name: Verify git is available
+      shell: which git
+      register: git_check
+      failed_when: git_check.rc != 0
+      changed_when: false
+    
+    - name: Check if GitHub CLI (gh) is installed
+      shell: which gh
+      register: gh_check_early
+      failed_when: false
+      changed_when: false
+    
+    - name: Install GitHub CLI (gh) via Homebrew (for git authentication)
+      homebrew:
+        name: gh
+        state: present
+      when: gh_check_early.rc != 0
+      register: gh_install_early
+    
+    - name: Check GitHub authentication status
+      shell: gh auth status
+      register: gh_auth_status
+      failed_when: false
+      changed_when: false
+    
+    - name: Run GitHub authentication script
+      script: github_auth.sh
+      when: gh_auth_status.rc != 0
+      register: gh_auth_result
+    
+    - name: Verify GitHub authentication after login
+      shell: gh auth status
+      register: gh_auth_verify
+      when: gh_auth_result is defined and gh_auth_result.changed
+      failed_when: false
+    
+    - name: Display authentication result
+      debug:
+        msg: |
+          {% if gh_auth_verify is defined and gh_auth_verify.rc is defined and gh_auth_verify.rc == 0 %}
+          ✅ GitHub authentication successful! You can now access private repositories.
+          {% elif gh_auth_verify is defined and gh_auth_verify.rc is defined and gh_auth_verify.rc != 0 %}
+          ⚠️  GitHub authentication not completed. Public repositories will still work.
+          💡 You can authenticate later by running: ./github_auth.sh
+          {% elif gh_auth_result is defined %}
+          ✅ GitHub authentication process completed.
+          {% else %}
+          ✅ GitHub authentication was already configured.
+          {% endif %}
+      when: gh_auth_result is defined or gh_auth_verify is defined or gh_auth_status.rc != 0
+    
+    - name: Check if Homebrew is installed
+      shell: which brew
+      register: brew_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Homebrew if not present
+      shell: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      when: brew_check.rc != 0
+      register: homebrew_install
+    
+    - name: Add Homebrew to PATH for Apple Silicon
+      shell: eval "$(/opt/homebrew/bin/brew shellenv)"
+      when: brew_check.rc != 0 and homebrew_install is defined
+      changed_when: false
+    
+    - name: Update Homebrew (idempotent)
+      homebrew:
+        update_homebrew: yes
+      when: brew_check.rc == 0 or homebrew_install is defined
+    
+    - name: Check if Slack is installed
+      shell: ls /Applications/Slack.app
+      register: slack_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Slack via Homebrew Cask
+      homebrew_cask:
+        name: slack
+        state: present
+      when: slack_check.rc != 0
+      register: slack_install
+    
+    - name: Check if Docker is installed
+      shell: ls /Applications/Docker.app
+      register: docker_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Docker Desktop via Homebrew Cask
+      homebrew_cask:
+        name: docker
+        state: present
+      when: docker_check.rc != 0
+      register: docker_install
+    
+    - name: Check if Docker Desktop is running
+      shell: pgrep -f "Docker Desktop" || docker info >/dev/null 2>&1
+      register: docker_running_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Start Docker Desktop if not running
+      shell: open -a Docker
+      when: docker_running_check.rc != 0
+      register: docker_start
+    
+    - name: Wait for Docker Desktop to start initially
+      pause:
+        seconds: 15
+      when: docker_start is defined and docker_start.changed
+    
+    - name: Check if Kubernetes is enabled in Docker Desktop
+      shell: |
+        if [ -f "$HOME/Library/Group Containers/group.com.docker/settings.json" ]; then
+          cat "$HOME/Library/Group Containers/group.com.docker/settings.json" | grep -q '"kubernetesEnabled":true'
+        else
+          exit 1
+        fi
+      register: k8s_enabled_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Enable Kubernetes in Docker Desktop settings
+      shell: |
+        DOCKER_SETTINGS="$HOME/Library/Group Containers/group.com.docker/settings.json"
+        if [ -f "$DOCKER_SETTINGS" ]; then
+          # Create backup
+          cp "$DOCKER_SETTINGS" "$DOCKER_SETTINGS.backup"
+          # Enable Kubernetes
+          cat "$DOCKER_SETTINGS" | jq '.kubernetesEnabled = true' > "$DOCKER_SETTINGS.tmp" && mv "$DOCKER_SETTINGS.tmp" "$DOCKER_SETTINGS"
+          echo "Kubernetes enabled in Docker Desktop settings"
+        else
+          echo "Docker Desktop settings file not found, will try after Docker starts"
+        fi
+      when: k8s_enabled_check.rc != 0
+      register: k8s_enable
+    
+    - name: Restart Docker Desktop to apply Kubernetes settings
+      shell: |
+        osascript -e 'quit app "Docker Desktop"'
+        sleep 5
+        open -a Docker
+      when: k8s_enable is defined and k8s_enable.changed
+    
+    - name: Wait for Docker to be ready
+      shell: |
+        echo "Waiting for Docker to start..."
+        for i in {1..30}; do
+          if docker info >/dev/null 2>&1; then
+            echo "Docker is ready!"
+            exit 0
+          fi
+          echo "Waiting for Docker... ($i/30)"
+          sleep 3
+        done
+        echo "Docker took longer than expected, but continuing..."
+        exit 0
+      when: k8s_enable is defined and k8s_enable.changed
+      register: docker_ready
+      
+    - name: Wait for Kubernetes to be ready (optional)
+      shell: |
+        echo "Waiting for Kubernetes to start..."
+        for i in {1..20}; do
+          if kubectl cluster-info >/dev/null 2>&1; then
+            echo "Kubernetes is ready!"
+            exit 0
+          fi
+          echo "Waiting for Kubernetes... ($i/20)"
+          sleep 5
+        done
+        echo "Kubernetes took longer than expected, but continuing..."
+        echo "You can check Kubernetes status later with: kubectl cluster-info"
+        exit 0
+      when: k8s_enable is defined and k8s_enable.changed
+      register: k8s_ready
+      failed_when: false
+    
+    - name: Display Docker and Kubernetes status
+      debug:
+        msg: |
+          🐳 Docker Status: {{ 'Ready' if docker_ready is defined and 'Docker is ready' in docker_ready.stdout else 'Starting (check with: docker info)' }}
+          ⚓ Kubernetes Status: {{ 'Ready' if k8s_ready is defined and 'Kubernetes is ready' in k8s_ready.stdout else 'Starting (check with: kubectl cluster-info)' }}
+      when: docker_ready is defined or k8s_ready is defined
+    
+    - name: Check if pyenv is installed
+      shell: which pyenv
+      register: pyenv_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if direnv is installed
+      shell: which direnv
+      register: direnv_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if uv is installed
+      shell: which uv
+      register: uv_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if make is installed
+      shell: which make
+      register: make_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if jq is installed
+      shell: which jq
+      register: jq_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install pyenv via Homebrew
+      homebrew:
+        name: pyenv
+        state: present
+      when: pyenv_check.rc != 0
+    
+    - name: Install direnv via Homebrew
+      homebrew:
+        name: direnv
+        state: present
+      when: direnv_check.rc != 0
+    
+    - name: Install uv via Homebrew
+      homebrew:
+        name: uv
+        state: present
+      when: uv_check.rc != 0
+    
+    - name: Install make via Homebrew
+      homebrew:
+        name: make
+        state: present
+      when: make_check.rc != 0
+    
+    - name: Install jq via Homebrew
+      homebrew:
+        name: jq
+        state: present
+      when: jq_check.rc != 0
+    
+    - name: Check if helm is installed
+      shell: which helm
+      register: helm_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if go-task is installed
+      shell: which task
+      register: go_task_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if openapi-generator is installed
+      shell: which openapi-generator
+      register: openapi_generator_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if k9s is installed
+      shell: which k9s
+      register: k9s_check
+      failed_when: false
+      changed_when: false
+    
+
+    
+    - name: Install helm via Homebrew
+      homebrew:
+        name: helm
+        state: present
+      when: helm_check.rc != 0
+    
+    - name: Install go-task via Homebrew (from go-task tap)
+      shell: brew install go-task/tap/go-task
+      when: go_task_check.rc != 0
+    
+    - name: Install openapi-generator via Homebrew
+      homebrew:
+        name: openapi-generator
+        state: present
+      when: openapi_generator_check.rc != 0
+    
+    - name: Install k9s via Homebrew (from derailed tap)
+      shell: brew install derailed/k9s/k9s
+      when: k9s_check.rc != 0
+    
+
+    
+    - name: Get home directory
+      shell: echo $HOME
+      register: home_dir
+      changed_when: false
+    
+    - name: Check if pyenv shell integration is already configured
+      shell: grep -q 'pyenv init' "{{ home_dir.stdout }}/.zshrc"
+      register: pyenv_configured
+      failed_when: false
+      changed_when: false
+    
+    - name: Ensure .zshrc exists
+      file:
+        path: "{{ home_dir.stdout }}/.zshrc"
+        state: touch
+        mode: '0644'
+      when: pyenv_check.rc != 0 or pyenv_configured.rc != 0
+    
+    - name: Setup pyenv shell integration
+      lineinfile:
+        path: "{{ home_dir.stdout }}/.zshrc"
+        line: "{{ item }}"
+        create: yes
+        insertafter: EOF
+      loop:
+        - 'export PYENV_ROOT="$HOME/.pyenv"'
+        - 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"'
+        - 'eval "$(pyenv init -)"'
+      when: pyenv_configured.rc != 0
+    
+    - name: Check if Python 3.13 is already installed via pyenv
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        pyenv versions --bare | grep -q "^3\.13"
+      register: python313_check
+      failed_when: false
+      changed_when: false
+      when: pyenv_check.rc == 0
+    
+    - name: Install Python 3.13 via pyenv
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)"
+        pyenv install --skip-existing 3.13
+      when: (pyenv_check.rc != 0 or pyenv_configured.rc != 0) or (python313_check is defined and python313_check.rc != 0)
+      register: python_install
+      changed_when: "'already exists' not in python_install.stderr"
+    
+    - name: Check if ruff is installed
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        which ruff
+      register: ruff_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if alembic is installed
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        which alembic
+      register: alembic_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if pytest is installed
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        which pytest
+      register: pytest_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Check if pytest-cov is installed
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        python3 -c "import pytest_cov" 2>/dev/null
+      register: pytest_cov_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install ruff via uv
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        uv tool install ruff
+      when: ruff_check.rc != 0
+    
+    - name: Install alembic via uv
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        uv tool install alembic
+      when: alembic_check.rc != 0
+    
+    - name: Install pytest via uv
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        uv tool install pytest
+      when: pytest_check.rc != 0
+    
+    - name: Install pytest-cov via pip (as pytest plugin)
+      shell: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)" 2>/dev/null || true
+        python3 -m pip install pytest-cov
+      when: pytest_cov_check.rc != 0
+    
+    - name: Check if direnv shell integration is already configured
+      shell: grep -q 'direnv hook' "{{ home_dir.stdout }}/.zshrc"
+      register: direnv_configured
+      failed_when: false
+      changed_when: false
+    
+    - name: Setup direnv shell integration
+      lineinfile:
+        path: "{{ home_dir.stdout }}/.zshrc"
+        line: 'eval "$(direnv hook zsh)"'
+        create: yes
+        insertafter: EOF
+      when: direnv_configured.rc != 0
+    
+    - name: Ensure destination directory exists
+      file:
+        path: "{{ dest_path | expanduser | dirname }}"
+        state: directory
+        mode: '0755'
+    
+    - name: Get default branch name from remote repository
+      shell: "git ls-remote --symref {{ repo_url }} HEAD | head -n1 | sed 's/ref: refs\\/heads\\///' | sed 's/[[:space:]].*//' "
+      register: default_branch
+      when: repo_version == "auto"
+      failed_when: false
+      changed_when: false
+    
+    - name: Set final branch version
+      set_fact:
+        final_repo_version: "{{ default_branch.stdout | trim if repo_version == 'auto' and default_branch is defined and default_branch.rc == 0 and default_branch.stdout != '' else repo_version }}"
+    
+    - name: Check if repository already exists
+      stat:
+        path: "{{ dest_path | expanduser }}"
+      register: repo_exists
+    
+    - name: Clone repository if it doesn't exist
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ dest_path | expanduser }}"
+        version: "{{ final_repo_version }}"
+        force: false
+      when: not repo_exists.stat.exists
+      register: git_clone
+    
+    - name: Update existing repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ dest_path | expanduser }}"
+        version: "{{ final_repo_version }}"
+        force: true
+      when: repo_exists.stat.exists
+      register: git_update
+    
+    - name: Set git result for display
+      set_fact:
+        git_result: "{{ git_clone if git_clone is defined else git_update }}"
+    
+    - name: Display setup summary
+      debug:
+        msg: |
+          🍎 Developer Environment Setup Complete!
+          =========================================
+          
+          ✅ Core Development Tools:
+          Xcode Command Line Tools: {{ 'Already installed' if xcode_check.rc == 0 else 'Newly installed' }}
+          Homebrew: {{ 'Already installed' if brew_check.rc == 0 else 'Newly installed' }}
+          Git: {{ 'Available' if git_check.rc == 0 else 'Not available' }}
+          Make: {{ 'Already installed' if make_check.rc == 0 else 'Newly installed' }}
+          
+          ✅ Python Development Tools:
+          pyenv (Python version manager): {{ 'Already installed' if pyenv_check.rc == 0 else 'Newly installed' }}
+          Python 3.13: {{ 'Already installed' if python313_check is defined and python313_check.rc == 0 else ('Newly installed' if python_install is defined and python_install.changed else 'Installed') }}
+          uv (Fast Python package manager): {{ 'Already installed' if uv_check.rc == 0 else 'Newly installed' }}
+          ruff (Python linter/formatter): {{ 'Already installed' if ruff_check.rc == 0 else 'Newly installed' }}
+          pytest (Testing framework): {{ 'Already installed' if pytest_check.rc == 0 else 'Newly installed' }}
+          pytest-cov (Test coverage): {{ 'Already installed' if pytest_cov_check.rc == 0 else 'Newly installed' }}
+          alembic (Database migrations): {{ 'Already installed' if alembic_check.rc == 0 else 'Newly installed' }}
+          
+          ✅ DevOps & Infrastructure Tools:
+          helm (Kubernetes package manager): {{ 'Already installed' if helm_check.rc == 0 else 'Newly installed' }}
+          go-task (Task runner): {{ 'Already installed' if go_task_check.rc == 0 else 'Newly installed' }}
+          openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check.rc == 0 else 'Newly installed' }}
+          k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check.rc == 0 else 'Newly installed' }}
+          GitHub CLI (gh): {{ 'Already installed' if gh_check_early.rc == 0 else 'Newly installed' }}
+          
+          ✅ Environment & Communication:
+          direnv (Environment manager): {{ 'Already installed' if direnv_check.rc == 0 else 'Newly installed' }}
+          Slack: {{ 'Already installed' if slack_check.rc == 0 else 'Newly installed' }}
+          Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
+          Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
+          
+          📂 Repository Details:
+          Repository: {{ repo_url }}
+          Destination: {{ dest_path | expanduser }}
+          Branch/Version: {{ final_repo_version }}
+          Status: {{ 'Cloned' if git_clone is defined and git_clone.changed else ('Updated' if git_update is defined and git_update.changed else 'Already up to date') }}
+          
+          🎉 Platform: macOS Apple Silicon
+          
+          💡 Next Steps:
+          - Restart your terminal or run: source ~/.zshrc
+          - GitHub CLI is ready! Authentication {{ 'already configured' if gh_auth_status.rc == 0 else 'completed via browser' }}
+          - Python 3.13 is ready! Use 'pyenv global 3.13' to set as default
+          - Use 'pyenv install X.Y.Z' to install additional Python versions
+          - Use 'direnv allow' in project directories with .envrc files
+          - Use 'uv venv' for fast virtual environment creation
+          - Use 'ruff check .' for Python linting and 'ruff format .' for formatting
+          - Use 'pytest' for running tests and 'pytest --cov' for coverage
+          - Use 'alembic init' to set up database migrations
+          - Use 'task --list' to see available tasks (go-task)
+          - Use 'helm' for Kubernetes package management
+          - Use 'openapi-generator' for API code generation
+          - Use 'docker --version' to verify Docker installation
+          - Use 'kubectl cluster-info' to verify Kubernetes is running
+          - Use 'kubectl get nodes' to see Kubernetes nodes
+          - Use 'k9s' for interactive Kubernetes cluster management
+          - Use 'gh auth login' to authenticate with GitHub
+          - Use 'gh repo clone <repo>' to clone repositories
+          - Start Docker Desktop from Applications or run 'open -a Docker'
+          
+          This playbook is idempotent - you can safely re-run it anytime! 

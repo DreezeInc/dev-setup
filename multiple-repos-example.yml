@@ -1,0 +1,68 @@
+---
+- name: Pull multiple repositories from GitHub (macOS Apple Silicon)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    base_path: "./projects"
+    repositories:
+      - url: "https://github.com/apple/swift.git"
+        dest: "swift"
+        version: "main"
+      - url: "https://github.com/Homebrew/brew.git"
+        dest: "homebrew"
+        version: "master"
+      - url: "https://github.com/github/docs.git"
+        dest: "github-docs"
+        version: "main"
+      - url: "https://github.com/apple/swift-package-manager.git"
+        dest: "swift-package-manager"
+        version: "main"
+  
+  tasks:
+    - name: Check if Xcode Command Line Tools are installed
+      shell: xcode-select -p
+      register: xcode_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Xcode Command Line Tools if not present
+      shell: xcode-select --install
+      when: xcode_check.rc != 0
+      register: xcode_install
+      failed_when: false
+    
+    - name: Wait for Xcode Command Line Tools installation (if triggered)
+      pause:
+        prompt: "Please complete the Xcode Command Line Tools installation in the popup dialog, then press Enter to continue"
+      when: xcode_check.rc != 0 and xcode_install.rc == 0
+    
+    - name: Ensure base directory exists
+      file:
+        path: "{{ base_path }}"
+        state: directory
+        mode: '0755'
+    
+    - name: Clone or update multiple repositories
+      git:
+        repo: "{{ item.url }}"
+        dest: "{{ base_path }}/{{ item.dest }}"
+        version: "{{ item.version }}"
+        force: true
+      loop: "{{ repositories }}"
+      register: git_results
+    
+    - name: Display summary of cloned repositories
+      debug:
+        msg: |
+          macOS Apple Silicon Repository Summary:
+          =====================================
+          {% for item in git_results.results %}
+          Repository: {{ repositories[loop.index0].url }}
+          Destination: {{ base_path }}/{{ repositories[loop.index0].dest }}
+          Status: {{ 'Updated' if item.changed else 'Already up to date' }}
+          ---
+          {% endfor %}
+          
+          Total repositories processed: {{ repositories | length }}
+          Platform: macOS Apple Silicon 
