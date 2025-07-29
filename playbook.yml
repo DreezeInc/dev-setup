@@ -268,6 +268,7 @@
       shell: open -a Docker
       when: docker_running_check.rc != 0
       register: docker_start
+      ignore_errors: yes
     
     - name: Check if Docker was already installed but not running
       set_fact:
@@ -298,6 +299,7 @@
         exit 1
       when: docker_start is defined and docker_start.changed
       register: docker_startup_ready
+      ignore_errors: yes
     
     - name: Check if Kubernetes is enabled in Docker Desktop
       shell: |
@@ -324,6 +326,7 @@
         fi
       when: k8s_enabled_check.rc != 0
       register: k8s_enable
+      ignore_errors: yes
     
     - name: Restart Docker Desktop to apply Kubernetes settings
       shell: |
@@ -331,6 +334,7 @@
         sleep 5
         open -a Docker
       when: k8s_enable is defined and k8s_enable.changed
+      ignore_errors: yes
     
     - name: Wait for Docker to be ready
       shell: |
@@ -347,6 +351,7 @@
         exit 0
       when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.rc != 0)
       register: docker_ready
+      ignore_errors: yes
       
     - name: Wait for Kubernetes to be ready (optional)
       shell: |
@@ -365,6 +370,7 @@
       when: k8s_enable is defined and k8s_enable.changed
       register: k8s_ready
       failed_when: false
+      ignore_errors: yes
     
     - name: Display Docker and Kubernetes status
       debug:
