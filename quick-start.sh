@@ -33,19 +33,34 @@ else
     echo "✅ Homebrew is installed ($(brew --version | head -n 1))"
 fi
 
+# Install Homebrew if not present (required for Ansible installation)
+if ! command -v brew &> /dev/null; then
+    echo "🍺 Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Add Homebrew to PATH for Apple Silicon
+    if [[ "$(uname -m)" == "arm64" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    else
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+    
+    if command -v brew &> /dev/null; then
+        echo "✅ Homebrew installed successfully"
+    else
+        echo "❌ Failed to install Homebrew"
+        exit 1
+    fi
+fi
+
 # Check if ansible is installed
 if ! command -v ansible-playbook &> /dev/null; then
     echo "⚠️  Ansible is not installed. Installing via Homebrew..."
-    if command -v brew &> /dev/null; then
-        brew install ansible
-        if [ $? -eq 0 ]; then
-            echo "✅ Ansible installed successfully"
-        else
-            echo "❌ Failed to install Ansible"
-            exit 1
-        fi
+    brew install ansible
+    if [ $? -eq 0 ]; then
+        echo "✅ Ansible installed successfully"
     else
-        echo "❌ Please install Homebrew first or run the playbook which will install it automatically"
+        echo "❌ Failed to install Ansible"
         exit 1
     fi
 else
