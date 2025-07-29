@@ -76,6 +76,20 @@
           {% endif %}
       when: gh_auth_result is defined or gh_auth_verify is defined or gh_auth_status.rc != 0
     
+    - name: Setup git to use GitHub CLI credentials
+      shell: gh auth setup-git
+      register: git_setup_result
+      when: >
+        (gh_auth_status.rc == 0) or 
+        (gh_auth_verify is defined and gh_auth_verify.rc == 0)
+      failed_when: false
+      changed_when: git_setup_result.rc == 0
+    
+    - name: Display git credential setup result
+      debug:
+        msg: "✅ Git configured to use GitHub CLI credentials"
+      when: git_setup_result is defined and git_setup_result.rc == 0
+    
     - name: Check if Homebrew is installed
       shell: which brew
       register: brew_check
