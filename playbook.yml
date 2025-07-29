@@ -124,6 +124,19 @@
       when: slack_check.rc != 0
       register: slack_install
     
+    - name: Check if Cursor is installed
+      shell: ls /Applications/Cursor.app
+      register: cursor_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Cursor via Homebrew Cask
+      homebrew_cask:
+        name: cursor
+        state: present
+      when: cursor_check.rc != 0
+      register: cursor_install
+    
     - name: Check if Docker is installed
       shell: ls /Applications/Docker.app
       register: docker_check
@@ -305,6 +318,12 @@
       failed_when: false
       changed_when: false
     
+    - name: Check if swagger-codegen is installed
+      shell: which swagger-codegen
+      register: swagger_codegen_check
+      failed_when: false
+      changed_when: false
+    
     - name: Check if k9s is installed
       shell: which k9s
       register: k9s_check
@@ -328,6 +347,12 @@
         name: openapi-generator
         state: present
       when: openapi_generator_check.rc != 0
+    
+    - name: Install swagger-codegen via Homebrew
+      homebrew:
+        name: swagger-codegen
+        state: present
+      when: swagger_codegen_check.rc != 0
     
     - name: Install k9s via Homebrew (from derailed tap)
       shell: brew install derailed/k9s/k9s
@@ -541,12 +566,14 @@
           helm (Kubernetes package manager): {{ 'Already installed' if helm_check.rc == 0 else 'Newly installed' }}
           go-task (Task runner): {{ 'Already installed' if go_task_check.rc == 0 else 'Newly installed' }}
           openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check.rc == 0 else 'Newly installed' }}
+          swagger-codegen (API code generation): {{ 'Already installed' if swagger_codegen_check.rc == 0 else 'Newly installed' }}
           k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check.rc == 0 else 'Newly installed' }}
           GitHub CLI (gh): {{ 'Already installed' if gh_check_early.rc == 0 else 'Newly installed' }}
           
           ✅ Environment & Communication:
           direnv (Environment manager): {{ 'Already installed' if direnv_check.rc == 0 else 'Newly installed' }}
           Slack: {{ 'Already installed' if slack_check.rc == 0 else 'Newly installed' }}
+          Cursor AI IDE: {{ 'Already installed' if cursor_check.rc == 0 else 'Newly installed' }}
           Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
           Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
           
@@ -571,6 +598,7 @@
           - Use 'task --list' to see available tasks (go-task)
           - Use 'helm' for Kubernetes package management
           - Use 'openapi-generator' for API code generation
+          - Use 'swagger-codegen' for generating client/server code from Swagger/OpenAPI specs
           - Use 'docker --version' to verify Docker installation
           - Use 'kubectl cluster-info' to verify Kubernetes is running
           - Use 'kubectl get nodes' to see Kubernetes nodes
