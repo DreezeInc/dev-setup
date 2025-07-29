@@ -143,18 +143,19 @@ else
     echo "⚠️  go-task (task) not found - the playbook will install it"
 fi
 
-# Function to run with confirmation
+# Function to run with confirmation (default is Y)
 run_with_confirmation() {
     local description=$1
     local command=$2
-    
+
     echo ""
     echo "📋 $description"
     echo "Command: $command"
     echo ""
-    read -p "Do you want to run this? (y/N): " -n 1 -r
+    read -p "Do you want to run this? (Y/n): " -n 1 -r
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Default to Y if no input
+    if [[ -z $REPLY || $REPLY =~ ^[Yy]$ ]]; then
         echo "Running..."
         eval $command
         echo "✅ Done!"
@@ -181,21 +182,6 @@ echo "======================================="
 # Offer to run examples
 run_with_confirmation "🚀 Complete Developer Environment Setup (Recommended)" \
     "ansible-playbook playbook.yml"
-
-run_with_confirmation "🔄 Re-run setup (Idempotent - safe to run multiple times)" \
-    "ansible-playbook playbook.yml"
-
-run_with_confirmation "📝 Dry-run to see what would be done" \
-    "ansible-playbook playbook.yml --check"
-
-run_with_confirmation "🔧 Setup with different repository" \
-    'ansible-playbook playbook.yml -e "repo_url=https://github.com/apple/swift.git" -e "dest_path=~/projects/swift-repo"'
-
-run_with_confirmation "🎯 Setup with auto-detected default branch" \
-    'ansible-playbook playbook.yml -e "repo_version=auto"'
-
-run_with_confirmation "📚 Test pulling multiple repositories" \
-    "ansible-playbook multiple-repos-example.yml"
 
 echo ""
 echo "🎉 Quick start completed!"
