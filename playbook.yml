@@ -150,6 +150,17 @@
       when: cursor_check.rc != 0
       register: cursor_install
     
+    - name: Check if GitLens extension is installed in Cursor
+      shell: cursor --list-extensions 2>/dev/null | grep -i "eamodio.gitlens"
+      register: gitlens_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install GitLens extension in Cursor
+      shell: cursor --install-extension eamodio.gitlens --force
+      when: gitlens_check.rc != 0
+      register: gitlens_install
+    
     - name: Check if Docker is installed
       shell: ls /Applications/Docker.app
       register: docker_check
@@ -627,6 +638,7 @@
           Slack: {{ 'Already installed' if slack_check.rc == 0 else 'Newly installed' }}
           Google Chrome: {{ 'Already installed' if chrome_check.rc == 0 else 'Newly installed' }}
           Cursor AI IDE: {{ 'Already installed' if cursor_check.rc == 0 else 'Newly installed' }}
+          GitLens Extension (Cursor): {{ 'Already installed' if gitlens_check.rc == 0 else 'Newly installed' }}
           Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
           Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
           
