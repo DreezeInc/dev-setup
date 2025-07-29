@@ -510,6 +510,20 @@
         insertafter: EOF
       when: direnv_configured.rc != 0
     
+    - name: Check if ll alias is already configured
+      shell: grep -q "alias ll='ls -la'" "{{ home_dir.stdout }}/.zshrc"
+      register: ll_alias_configured
+      failed_when: false
+      changed_when: false
+    
+    - name: Setup ll alias
+      lineinfile:
+        path: "{{ home_dir.stdout }}/.zshrc"
+        line: "alias ll='ls -la'"
+        create: yes
+        insertafter: EOF
+      when: ll_alias_configured.rc != 0
+    
     - name: Ensure destination directory exists
       file:
         path: "{{ dest_path | expanduser | dirname }}"
