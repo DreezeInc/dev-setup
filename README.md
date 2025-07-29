@@ -6,6 +6,7 @@ This Ansible playbook sets up a complete developer environment on macOS Apple Si
 - Installing DevOps & infrastructure tools (helm, go-task, openapi-generator, Docker Desktop)
 - Installing environment management tools (direnv)
 - Installing Slack for team communication
+- Installing Google Chrome for web browsing
 - Cloning/updating your specified GitHub repository
 - Configuring shell integrations for development tools
 - Ensuring all operations are idempotent for safe re-runs
@@ -94,15 +95,16 @@ You can customize the following variables:
 4. **Checks and installs Homebrew** - Package manager for macOS
 5. **Updates Homebrew** - Ensures latest package definitions
 6. **Checks and installs Slack** - Team communication tool
-7. **Checks and installs development tools** - pyenv, direnv, uv, make, jq, helm, go-task, openapi-generator, k9s, gh (GitHub CLI), Docker Desktop
-8. **Installs Python development tools** - ruff, pytest, pytest-cov, alembic via uv
-9. **Configures shell integrations** - Sets up pyenv and direnv in ~/.zshrc (idempotent)
-10. **Installs Python 3.13** - Automatically installs the latest Python version via pyenv
-11. **Enables Kubernetes in Docker Desktop** - Automatically configures local Kubernetes cluster
-12. **Creates destination directory** - Ensures the target path exists
-13. **Auto-detects default branch** (when repo_version="auto") - Handles repos with different default branches
-14. **Clones or updates repository** - Downloads or updates the specified GitHub repository
-15. **Provides comprehensive status feedback** - Shows what was accomplished
+7. **Checks and installs Google Chrome** - Web browser
+8. **Checks and installs development tools** - pyenv, direnv, uv, make, jq, helm, go-task, openapi-generator, k9s, gh (GitHub CLI), Docker Desktop
+9. **Installs Python development tools** - ruff, pytest, pytest-cov, alembic via uv
+10. **Configures shell integrations** - Sets up pyenv and direnv in ~/.zshrc (idempotent)
+11. **Installs Python 3.13** - Automatically installs the latest Python version via pyenv
+12. **Enables Kubernetes in Docker Desktop** - Automatically configures local Kubernetes cluster
+13. **Creates destination directory** - Ensures the target path exists
+14. **Auto-detects default branch** (when repo_version="auto") - Handles repos with different default branches
+15. **Clones or updates repository** - Downloads or updates the specified GitHub repository
+16. **Provides comprehensive status feedback** - Shows what was accomplished
 
 ## Idempotency Features
 
@@ -121,6 +123,7 @@ This playbook is designed to be **idempotent**, meaning you can safely run it mu
 - If shell integrations are configured → Skips configuration
 - If Python 3.13 is already installed → Skips Python installation
 - If Slack is already installed → Skips installation
+- If Google Chrome is already installed → Skips installation
 - If repository exists → Updates instead of cloning
 - If repository is already up to date → No changes made
 
@@ -171,6 +174,7 @@ This playbook is designed to be **idempotent**, meaning you can safely run it mu
 - **Native Apple Silicon optimization**
 - **Homebrew integration with proper Apple Silicon paths**
 - **Slack installation via Homebrew Cask**
+- **Google Chrome installation via Homebrew Cask**
 - **Smart branch detection** - Automatically handles repos with different default branches
 - **Tilde expansion** - Properly handles `~/` paths on macOS
 
@@ -202,6 +206,7 @@ The playbook intelligently handles different default branch names:
 - **Docker Desktop** - Containerization platform with Kubernetes enabled
 - **direnv** - Environment variable management per directory
 - **Slack** - Team communication and collaboration
+- **Google Chrome** - Web browser for testing
 - **Your Repository** - Your project code, ready to work with
 
 ### Smart Installation:

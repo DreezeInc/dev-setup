@@ -111,6 +111,13 @@ else
     echo "⚠️  Slack not found - the playbook will install it"
 fi
 
+# Check if Google Chrome is installed
+if ls /Applications/Google\ Chrome.app &> /dev/null; then
+    echo "✅ Google Chrome is already installed"
+else
+    echo "⚠️  Google Chrome not found - the playbook will install it"
+fi
+
 # Check if Docker is installed
 if ls /Applications/Docker.app &> /dev/null; then
     echo "✅ Docker Desktop is already installed"
@@ -219,6 +226,7 @@ echo "   ✅ Python Stack: pyenv, Python 3.13, uv, ruff, pytest, pytest-cov, ale
 echo "   ✅ DevOps Tools: helm, go-task, openapi-generator, Docker Desktop"
 echo "   ✅ Environment: direnv for per-project configurations"
 echo "   ✅ Communication: Slack for team collaboration"
+echo "   ✅ Browser: Google Chrome"
 echo "   ✅ Repository: Your GitHub project ready to develop"
 echo "   ✅ Shell integrations configured automatically"
 echo "   ✅ Idempotent design - safe to re-run anytime"

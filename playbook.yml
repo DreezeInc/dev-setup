@@ -116,6 +116,12 @@
       register: slack_check
       failed_when: false
       changed_when: false
+
+    - name: Check if Google Chrome is installed
+      shell: ls /Applications/Google\ Chrome.app
+      register: chrome_check
+      failed_when: false
+      changed_when: false
     
     - name: Install Slack via Homebrew Cask
       homebrew_cask:
@@ -123,6 +129,13 @@
         state: present
       when: slack_check.rc != 0
       register: slack_install
+
+    - name: Install Google Chrome via Homebrew Cask
+      homebrew_cask:
+        name: google-chrome
+        state: present
+      when: chrome_check.rc != 0
+      register: chrome_install
     
     - name: Check if Cursor is installed
       shell: ls /Applications/Cursor.app
@@ -573,6 +586,7 @@
           ✅ Environment & Communication:
           direnv (Environment manager): {{ 'Already installed' if direnv_check.rc == 0 else 'Newly installed' }}
           Slack: {{ 'Already installed' if slack_check.rc == 0 else 'Newly installed' }}
+          Google Chrome: {{ 'Already installed' if chrome_check.rc == 0 else 'Newly installed' }}
           Cursor AI IDE: {{ 'Already installed' if cursor_check.rc == 0 else 'Newly installed' }}
           Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
           Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
