@@ -156,39 +156,93 @@
       when: cursor_check.rc != 0
       register: cursor_install
       become: yes
+
+    - name: Launch Cursor once to set up CLI
+      shell: open -a Cursor
+      when: cursor_install is defined and cursor_install.changed
+      async: 0
+      poll: 0
+
+    - name: Wait for Cursor initialization
+      pause:
+        seconds: 10
+      when: cursor_install is defined and cursor_install.changed
+
+    - name: Quit Cursor after initialization
+      shell: osascript -e 'quit app "Cursor"'
+      when: cursor_install is defined and cursor_install.changed
+      ignore_errors: true
+
+    - name: Check if cursor CLI is available
+      shell: which cursor
+      register: cursor_cli_check
+      failed_when: false
+      changed_when: false
+
+    - name: Symlink Cursor CLI if missing
+      shell: |
+        CURSOR_APP="/Applications/Cursor.app"
+        for p in "$CURSOR_APP/Contents/Resources/app/bin/cursor" \
+                 "$CURSOR_APP/Contents/MacOS/cursor"; do
+          if [ -x "$p" ]; then
+            TARGET="$p"
+            break
+          fi
+        done
+        if [ -n "$TARGET" ]; then
+          if [ -d /opt/homebrew/bin ]; then
+            ln -sf "$TARGET" /opt/homebrew/bin/cursor
+          else
+            ln -sf "$TARGET" /usr/local/bin/cursor
+          fi
+        fi
+      when: cursor_cli_check.rc != 0
+      become: yes
+
+    - name: Re-check cursor CLI availability
+      shell: which cursor
+      register: cursor_cli_final
+      failed_when: false
+      changed_when: false
     
     - name: Check if GitLens extension is installed in Cursor
       shell: cursor --list-extensions 2>/dev/null | grep -i "eamodio.gitlens"
       register: gitlens_check
       failed_when: false
       changed_when: false
+      when: cursor_cli_final.rc == 0
     
     - name: Install GitLens extension in Cursor
       shell: cursor --install-extension eamodio.gitlens --force
-      when: gitlens_check.rc != 0
+      when: gitlens_check.rc != 0 and cursor_cli_final.rc == 0
       register: gitlens_install
+      ignore_errors: yes
     
     - name: Check if Python extension is installed in Cursor
       shell: cursor --list-extensions 2>/dev/null | grep -i "ms-python.python"
       register: python_ext_check
       failed_when: false
       changed_when: false
+      when: cursor_cli_final.rc == 0
     
     - name: Install Python extension in Cursor
       shell: cursor --install-extension ms-python.python --force
-      when: python_ext_check.rc != 0
+      when: python_ext_check.rc != 0 and cursor_cli_final.rc == 0
       register: python_ext_install
+      ignore_errors: yes
     
     - name: Check if Python Debugger extension is installed in Cursor
       shell: cursor --list-extensions 2>/dev/null | grep -i "ms-python.debugpy"
       register: python_debugger_check
       failed_when: false
       changed_when: false
+      when: cursor_cli_final.rc == 0
     
     - name: Install Python Debugger extension in Cursor
       shell: cursor --install-extension ms-python.debugpy --force
-      when: python_debugger_check.rc != 0
+      when: python_debugger_check.rc != 0 and cursor_cli_final.rc == 0
       register: python_debugger_install
+      ignore_errors: yes
     
     - name: Check if Docker is installed
       shell: ls /Applications/Docker.app
