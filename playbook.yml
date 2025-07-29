@@ -103,7 +103,7 @@
       shell: NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       when: brew_check.rc != 0
       register: homebrew_install
-      become: yes
+      # become: yes  # Homebrew should NOT be installed with sudo
     
     - name: Add Homebrew to PATH for Apple Silicon
       shell: eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -133,7 +133,7 @@
         state: present
       when: slack_check.rc != 0
       register: slack_install
-      become: yes
+      # become: yes  # Not required for Homebrew Cask on modern macOS
 
     - name: Install Google Chrome via Homebrew Cask
       homebrew_cask:
@@ -141,7 +141,7 @@
         state: present
       when: chrome_check.rc != 0
       register: chrome_install
-      become: yes
+      # become: yes  # Not required for Homebrew Cask on modern macOS
     
     - name: Check if Cursor is installed
       shell: ls /Applications/Cursor.app
@@ -155,7 +155,7 @@
         state: present
       when: cursor_check.rc != 0
       register: cursor_install
-      become: yes
+      # become: yes  # Not required for Homebrew Cask on modern macOS
 
     - name: Launch Cursor once to set up CLI
       shell: open -a Cursor
@@ -256,7 +256,7 @@
         state: present
       when: docker_check.rc != 0
       register: docker_install
-      become: yes
+      # become: yes  # Not required for Homebrew Cask on modern macOS
     
     - name: Check if Docker Desktop is running
       shell: pgrep -f "Docker Desktop" || docker info >/dev/null 2>&1
