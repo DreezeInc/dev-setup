@@ -161,6 +161,28 @@
       when: gitlens_check.rc != 0
       register: gitlens_install
     
+    - name: Check if Python extension is installed in Cursor
+      shell: cursor --list-extensions 2>/dev/null | grep -i "ms-python.python"
+      register: python_ext_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Python extension in Cursor
+      shell: cursor --install-extension ms-python.python --force
+      when: python_ext_check.rc != 0
+      register: python_ext_install
+    
+    - name: Check if Python Debugger extension is installed in Cursor
+      shell: cursor --list-extensions 2>/dev/null | grep -i "ms-python.debugpy"
+      register: python_debugger_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Python Debugger extension in Cursor
+      shell: cursor --install-extension ms-python.debugpy --force
+      when: python_debugger_check.rc != 0
+      register: python_debugger_install
+    
     - name: Check if Docker is installed
       shell: ls /Applications/Docker.app
       register: docker_check
@@ -639,6 +661,8 @@
           Google Chrome: {{ 'Already installed' if chrome_check.rc == 0 else 'Newly installed' }}
           Cursor AI IDE: {{ 'Already installed' if cursor_check.rc == 0 else 'Newly installed' }}
           GitLens Extension (Cursor): {{ 'Already installed' if gitlens_check.rc == 0 else 'Newly installed' }}
+          Python Extension (Cursor): {{ 'Already installed' if python_ext_check.rc == 0 else 'Newly installed' }}
+          Python Debugger Extension (Cursor): {{ 'Already installed' if python_debugger_check.rc == 0 else 'Newly installed' }}
           Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
           Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
           
