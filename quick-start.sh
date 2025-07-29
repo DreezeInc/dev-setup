@@ -213,6 +213,7 @@ echo "🎯 Developer Environment Setup Options:"
 echo "======================================="
 
 # Offer to run examples
+# The playbook will use the cached sudo privileges when needed
 run_with_confirmation "🚀 Complete Developer Environment Setup (Recommended)" \
     "ansible-playbook playbook.yml"
 

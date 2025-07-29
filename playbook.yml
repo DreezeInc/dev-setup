@@ -3,10 +3,13 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: no  # Default to no privilege escalation
   vars:
     repo_url: "https://github.com/DreezeInc/dreeze-git-0.git"
     dest_path: "~/code/dreeze"
     repo_version: "main"  # Use master for octocat repository, or specify branch/tag/commit hash
+    ansible_become_method: sudo
+    ansible_become_user: root
   
   tasks:
     - name: Check if Xcode Command Line Tools are installed
@@ -100,6 +103,7 @@
       shell: NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       when: brew_check.rc != 0
       register: homebrew_install
+      become: yes
     
     - name: Add Homebrew to PATH for Apple Silicon
       shell: eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -129,6 +133,7 @@
         state: present
       when: slack_check.rc != 0
       register: slack_install
+      become: yes
 
     - name: Install Google Chrome via Homebrew Cask
       homebrew_cask:
@@ -136,6 +141,7 @@
         state: present
       when: chrome_check.rc != 0
       register: chrome_install
+      become: yes
     
     - name: Check if Cursor is installed
       shell: ls /Applications/Cursor.app
@@ -149,6 +155,7 @@
         state: present
       when: cursor_check.rc != 0
       register: cursor_install
+      become: yes
     
     - name: Check if GitLens extension is installed in Cursor
       shell: cursor --list-extensions 2>/dev/null | grep -i "eamodio.gitlens"
@@ -195,6 +202,7 @@
         state: present
       when: docker_check.rc != 0
       register: docker_install
+      become: yes
     
     - name: Check if Docker Desktop is running
       shell: pgrep -f "Docker Desktop" || docker info >/dev/null 2>&1
@@ -546,12 +554,12 @@
         uv tool install pytest
       when: pytest_check.rc != 0
     
-    - name: Install pytest-cov via pip (as pytest plugin)
+    - name: Install pytest-cov via uv (as pytest plugin)
       shell: |
         export PYENV_ROOT="$HOME/.pyenv"
         export PATH="$PYENV_ROOT/bin:$PATH"
         eval "$(pyenv init -)" 2>/dev/null || true
-        python3 -m pip install pytest-cov
+        uv tool install pytest --with pytest-cov
       when: pytest_cov_check.rc != 0
     
     - name: Check if direnv shell integration is already configured
