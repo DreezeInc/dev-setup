@@ -450,28 +450,70 @@
       register: k8s_enable
       ignore_errors: yes
     
+    - name: Check if manual Docker restart is needed
+      debug:
+        msg: |
+          ⚠️  Docker Desktop needs to be restarted to apply settings changes.
+          
+          The playbook will attempt to restart Docker Desktop automatically.
+          If this causes issues, you can:
+          1. Press Ctrl+C to stop the playbook
+          2. Manually restart Docker Desktop
+          3. Re-run the playbook with: SKIP_DOCKER_RESTART=1 ansible-playbook playbook.yml
+      when: (k8s_enable is defined and k8s_enable.changed) or (containerd_enable is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required"))
+    
     - name: Restart Docker Desktop to apply settings changes
       shell: |
+        echo "Restarting Docker Desktop..."
         osascript -e 'quit app "Docker Desktop"'
-        sleep 5
+        sleep 10
         open -a Docker
-      when: (k8s_enable is defined and k8s_enable.changed) or (containerd_enable is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required"))
+        echo "Docker Desktop restart initiated"
+      when: ((k8s_enable is defined and k8s_enable.changed) or (containerd_enable is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required"))) and (lookup('env', 'SKIP_DOCKER_RESTART') != '1')
+      register: docker_restart
       ignore_errors: yes
     
-    - name: Wait for Docker to be ready
+    - name: Wait for Docker Desktop app to fully launch
+      pause:
+        seconds: 20
+        prompt: "Waiting for Docker Desktop to initialize..."
+      when: docker_restart is defined and docker_restart.changed
+    
+    - name: Wait for Docker daemon to be ready
       shell: |
-        echo "Waiting for Docker to start..."
-        for i in {1..30}; do
-          if docker info >/dev/null 2>&1; then
-            echo "Docker is ready!"
+        echo "Waiting for Docker daemon to be ready..."
+        MAX_ATTEMPTS=40
+        ATTEMPT=0
+        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+          ATTEMPT=$((ATTEMPT + 1))
+          
+          # Check if Docker Desktop is running
+          if ! pgrep -f "Docker Desktop" > /dev/null; then
+            echo "Docker Desktop not running, waiting... ($ATTEMPT/$MAX_ATTEMPTS)"
+            sleep 5
+            continue
+          fi
+          
+          # Check if docker daemon is responding
+          if docker version --format '{{.Server.Version}}' 2>/dev/null; then
+            echo "Docker daemon is ready!"
             exit 0
           fi
-          echo "Waiting for Docker... ($i/30)"
-          sleep 3
+          
+          # Try alternative check
+          if docker ps >/dev/null 2>&1; then
+            echo "Docker daemon is ready!"
+            exit 0
+          fi
+          
+          echo "Waiting for Docker daemon... ($ATTEMPT/$MAX_ATTEMPTS)"
+          sleep 5
         done
-        echo "Docker took longer than expected, but continuing..."
+        
+        echo "Docker daemon took longer than expected"
+        echo "You may need to manually start Docker Desktop"
         exit 0
-      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required"))
+      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required")) or (docker_restart is defined and docker_restart.changed)
       register: docker_ready
       ignore_errors: yes
       
@@ -499,6 +541,18 @@
         msg: |
           🐳 Docker Status: {{ 'Ready' if (docker_ready is defined and 'Docker is ready' in docker_ready.stdout) or (docker_startup_ready is defined and 'Docker is ready' in docker_startup_ready.stdout) else 'Starting (check with: docker info)' }}
           ⚓ Kubernetes Status: {{ 'Ready' if k8s_ready is defined and 'Kubernetes is ready' in k8s_ready.stdout else 'Starting (check with: kubectl cluster-info)' }}
+          {% if docker_ready is defined and 'longer than expected' in docker_ready.stdout %}
+          
+          ⚠️  Docker Desktop is taking longer than expected to start.
+          
+          Please check:
+          1. Open Docker Desktop manually if it's not already open
+          2. Check if Docker Desktop is asking for your password
+          3. Make sure Docker Desktop has necessary permissions
+          4. Wait for the Docker icon in the menu bar to stop animating
+          
+          Once Docker is running, you can continue with the setup.
+          {% endif %}
           {% if k8s_enable is defined and k8s_enable.changed %}
           
           💡 Note: If Kubernetes doesn't start automatically, please:
