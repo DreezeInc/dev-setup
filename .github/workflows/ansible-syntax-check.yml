@@ -1,0 +1,66 @@
+name: Ansible Syntax Check
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.yml'
+      - '**.yaml'
+      - 'playbook.yml'
+      - 'inventory.ini'
+      - 'ansible.cfg'
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.yml'
+      - '**.yaml'
+      - 'playbook.yml'
+      - 'inventory.ini'
+      - 'ansible.cfg'
+
+jobs:
+  ansible-syntax-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    
+    - name: Install Ansible
+      run: |
+        python -m pip install --upgrade pip
+        pip install ansible
+    
+    - name: Check Ansible version
+      run: ansible --version
+    
+    - name: Run Ansible syntax check on playbook.yml
+      run: ansible-playbook --syntax-check playbook.yml
+    
+    - name: Check for other playbooks
+      id: find-playbooks
+      run: |
+        echo "Checking for additional playbooks..."
+        playbooks=$(find . -name "*.yml" -o -name "*.yaml" | grep -E "(playbook|site)" | grep -v ".github" | sort)
+        if [ -n "$playbooks" ]; then
+          echo "Found playbooks:"
+          echo "$playbooks"
+          echo "playbooks<<EOF" >> $GITHUB_OUTPUT
+          echo "$playbooks" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Run syntax check on additional playbooks
+      if: steps.find-playbooks.outputs.playbooks != ''
+      run: |
+        echo "${{ steps.find-playbooks.outputs.playbooks }}" | while read -r playbook; do
+          if [ -f "$playbook" ]; then
+            echo "Checking syntax for: $playbook"
+            ansible-playbook --syntax-check "$playbook" || exit 1
+          fi
+        done

@@ -517,7 +517,8 @@
         echo "Docker daemon took longer than expected"
         echo "You may need to manually start Docker Desktop"
         exit 0
-      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.changed) or (docker_restart is defined and docker_restart.changed)      register: docker_ready
+      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.changed) or (docker_restart is defined and docker_restart.changed)
+      register: docker_ready
       ignore_errors: yes
       
     - name: Force Kubernetes initialization with Docker Desktop restart

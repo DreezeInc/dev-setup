@@ -293,4 +293,55 @@ This playbook is perfect for:
 - **Environment restoration** - Rebuild after system issues
 - **Team onboarding** - Standardize development environments
 - **Regular maintenance** - Keep tools and repos updated
-- **Experimentation** - Safe to test different configurations 
+- **Experimentation** - Safe to test different configurations
+
+## CI/CD Integration - Ansible Syntax Checking
+
+This repository includes GitHub Actions workflow for automatic Ansible syntax validation:
+
+### Automatic Syntax Checking
+
+The `.github/workflows/ansible-syntax-check.yml` workflow automatically:
+- Runs on all pull requests that modify Ansible files
+- Validates syntax of `playbook.yml` and other playbooks
+- Blocks merging if syntax errors are found
+- Provides clear error messages in the PR
+
+### Setting Up Branch Protection
+
+To enforce syntax checking before merging:
+
+1. Push the workflow file to GitHub:
+   ```bash
+   git add .github/workflows/ansible-syntax-check.yml
+   git commit -m "Add Ansible syntax check workflow"
+   git push
+   ```
+
+2. Enable branch protection in GitHub:
+   - Go to Settings → Branches
+   - Add rule for your main branch
+   - Enable "Require status checks to pass before merging"
+   - Select `ansible-syntax-check` as required
+   - Save changes
+
+See `.github/BRANCH_PROTECTION.md` for detailed setup instructions.
+
+### Local Pre-commit Hook
+
+Install a local pre-commit hook to catch syntax errors before pushing:
+
+```bash
+# Install the pre-commit hook
+./scripts/install-pre-commit-hook.sh
+
+# The hook will now run automatically on git commit
+# To skip the hook (not recommended): git commit --no-verify
+```
+
+### Manual Syntax Checking
+
+Test syntax locally before committing:
+```bash
+ansible-playbook --syntax-check playbook.yml
+``` 
