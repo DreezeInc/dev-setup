@@ -244,6 +244,18 @@
       register: python_debugger_install
       ignore_errors: yes
     
+    - name: Check if jq is installed (needed for Docker Desktop Kubernetes setup)
+      shell: which jq
+      register: jq_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install jq via Homebrew (required for Kubernetes enablement)
+      homebrew:
+        name: jq
+        state: present
+      when: jq_check.rc != 0
+    
     - name: Check if Docker is installed
       shell: ls /Applications/Docker.app
       register: docker_check
@@ -312,6 +324,23 @@
       failed_when: false
       changed_when: false
     
+    - name: Wait for Docker Desktop settings file to be created
+      shell: |
+        DOCKER_SETTINGS="$HOME/Library/Group Containers/group.com.docker/settings.json"
+        for i in {1..10}; do
+          if [ -f "$DOCKER_SETTINGS" ]; then
+            echo "Docker Desktop settings file found"
+            exit 0
+          fi
+          echo "Waiting for Docker Desktop settings file... ($i/10)"
+          sleep 2
+        done
+        echo "Docker Desktop settings file not found after waiting"
+        exit 1
+      when: k8s_enabled_check.rc != 0
+      register: settings_file_wait
+      ignore_errors: yes
+    
     - name: Enable Kubernetes in Docker Desktop settings
       shell: |
         DOCKER_SETTINGS="$HOME/Library/Group Containers/group.com.docker/settings.json"
@@ -322,9 +351,10 @@
           cat "$DOCKER_SETTINGS" | jq '.kubernetesEnabled = true' > "$DOCKER_SETTINGS.tmp" && mv "$DOCKER_SETTINGS.tmp" "$DOCKER_SETTINGS"
           echo "Kubernetes enabled in Docker Desktop settings"
         else
-          echo "Docker Desktop settings file not found, will try after Docker starts"
+          echo "ERROR: Docker Desktop settings file not found"
+          exit 1
         fi
-      when: k8s_enabled_check.rc != 0
+      when: k8s_enabled_check.rc != 0 and (settings_file_wait is not defined or settings_file_wait.rc == 0)
       register: k8s_enable
       ignore_errors: yes
     
@@ -403,12 +433,6 @@
       failed_when: false
       changed_when: false
     
-    - name: Check if jq is installed
-      shell: which jq
-      register: jq_check
-      failed_when: false
-      changed_when: false
-    
     - name: Install pyenv via Homebrew
       homebrew:
         name: pyenv
@@ -432,12 +456,6 @@
         name: make
         state: present
       when: make_check.rc != 0
-    
-    - name: Install jq via Homebrew
-      homebrew:
-        name: jq
-        state: present
-      when: jq_check.rc != 0
     
     - name: Check if helm is installed
       shell: which helm
