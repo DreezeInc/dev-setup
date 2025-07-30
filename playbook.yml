@@ -383,7 +383,7 @@
     
     - name: Determine final settings file type
       set_fact:
-        final_settings_type: "{{ settings_file_type_after_wait.stdout if settings_file_type_after_wait is defined else settings_file_type.stdout }}"
+        final_settings_type: "{{ settings_file_type_after_wait.stdout if (settings_file_type_after_wait is defined and settings_file_type_after_wait.stdout is defined) else (settings_file_type.stdout if (settings_file_type is defined and settings_file_type.stdout is defined) else 'none') }}"
     
     - name: Enable containerd image store (required for newer Docker Desktop Kubernetes)
       shell: |
@@ -539,9 +539,9 @@
     - name: Display Docker and Kubernetes status
       debug:
         msg: |
-          🐳 Docker Status: {{ 'Ready' if (docker_ready is defined and 'Docker is ready' in docker_ready.stdout) or (docker_startup_ready is defined and 'Docker is ready' in docker_startup_ready.stdout) else 'Starting (check with: docker info)' }}
-          ⚓ Kubernetes Status: {{ 'Ready' if k8s_ready is defined and 'Kubernetes is ready' in k8s_ready.stdout else 'Starting (check with: kubectl cluster-info)' }}
-          {% if docker_ready is defined and 'longer than expected' in docker_ready.stdout %}
+          🐳 Docker Status: {{ 'Ready' if (docker_ready is defined and docker_ready.stdout is defined and 'Docker is ready' in docker_ready.stdout) or (docker_startup_ready is defined and docker_startup_ready.stdout is defined and 'Docker is ready' in docker_startup_ready.stdout) else 'Starting (check with: docker info)' }}
+          ⚓ Kubernetes Status: {{ 'Ready' if (k8s_ready is defined and k8s_ready.stdout is defined and 'Kubernetes is ready' in k8s_ready.stdout) else 'Starting (check with: kubectl cluster-info)' }}
+          {% if docker_ready is defined and docker_ready.stdout is defined and 'longer than expected' in docker_ready.stdout %}
           
           ⚠️  Docker Desktop is taking longer than expected to start.
           
