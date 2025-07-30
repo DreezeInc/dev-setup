@@ -495,7 +495,7 @@
           fi
           
           # Check if docker daemon is responding
-          if docker version --format '{{.Server.Version}}' 2>/dev/null; then
+          if docker version --format '{{"{{.Server.Version}}"}}' 2>/dev/null; then
             echo "Docker daemon is ready!"
             exit 0
           fi
