@@ -364,7 +364,7 @@
         done
         echo "Docker Desktop settings file not found after waiting"
         exit 1
-      when: k8s_enabled_check.stdout == "false" and settings_file_type.stdout == "none"
+      when: k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false" and settings_file_type is defined and settings_file_type.stdout is defined and settings_file_type.stdout == "none"
       register: settings_file_wait
       ignore_errors: yes
     
@@ -377,14 +377,13 @@
         else
           echo "none"
         fi
-      when: k8s_enabled_check.stdout == "false" and settings_file_wait is defined
+      when: k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false" and settings_file_wait is defined
       register: settings_file_type_after_wait
       changed_when: false
     
     - name: Determine final settings file type
       set_fact:
-        final_settings_type: "{{ settings_file_type_after_wait.stdout if settings_file_type_after_wait is defined and settings_file_type_after_wait.stdout is defined else (settings_file_type.stdout if settings_file_type is defined and settings_file_type.stdout is defined else 'none') }}"
-    
+        final_settings_type: "{{ settings_file_type_after_wait.stdout if settings_file_type_after_wait is defined and settings_file_type_after_wait.stdout is defined else (settings_file_type.stdout if settings_file_type is defined and settings_file_type.stdout is defined else 'none') }}"    
     - name: Enable containerd image store (required for newer Docker Desktop Kubernetes)
       shell: |
         RESTART_NEEDED=false
@@ -451,7 +450,7 @@
           echo "ERROR: No Docker Desktop settings file found"
           exit 1
         fi
-      when: k8s_enabled_check.stdout == "false"
+      when: k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false"
       register: k8s_enable
       ignore_errors: yes
     
@@ -518,21 +517,81 @@
         echo "Docker daemon took longer than expected"
         echo "You may need to manually start Docker Desktop"
         exit 0
-      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.changed) or (docker_restart is defined and docker_restart.changed)
-      register: docker_ready
+      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.changed) or (docker_restart is defined and docker_restart.changed)      register: docker_ready
       ignore_errors: yes
       
+    - name: Force Kubernetes initialization with Docker Desktop restart
+      shell: |
+        echo "Attempting to trigger Kubernetes initialization..."
+        # Sometimes Docker Desktop needs multiple restarts to properly initialize Kubernetes
+        osascript -e 'quit app "Docker Desktop"' 2>/dev/null || true
+        sleep 10
+        open -a "Docker Desktop"
+        sleep 30
+      when: k8s_enable is defined and k8s_enable.changed
+      ignore_errors: yes
+
+    - name: Check for kubectl configuration
+      stat:
+        path: ~/.kube/config
+      register: kubeconfig_check
+      
+    - name: Wait for kubectl configuration to be created
+      shell: |
+        echo "Waiting for kubectl configuration..."
+        for i in {1..30}; do
+          if [ -f "$HOME/.kube/config" ]; then
+            echo "kubectl configuration found!"
+            exit 0
+          fi
+          echo "Waiting for kubectl configuration... ($i/30)"
+          sleep 5
+        done
+        echo "kubectl configuration not found after waiting"
+        exit 1
+      when: k8s_enable is defined and k8s_enable.changed and kubeconfig_check is defined and kubeconfig_check.stat is defined and not kubeconfig_check.stat.exists
+      register: kubeconfig_wait
+      ignore_errors: yes
+
+    - name: Set docker-desktop as default kubectl context
+      shell: |
+        if kubectl config get-contexts docker-desktop >/dev/null 2>&1; then
+          kubectl config use-context docker-desktop
+          echo "Set docker-desktop as default context"
+        else
+          echo "docker-desktop context not found"
+          exit 1
+        fi
+      when: (kubeconfig_wait is defined and kubeconfig_wait is succeeded) or (kubeconfig_check is defined and kubeconfig_check.stat is defined and kubeconfig_check.stat.exists)
+      ignore_errors: yes
+
     - name: Wait for Kubernetes to be ready (optional)
       shell: |
         echo "Waiting for Kubernetes to start..."
-        for i in {1..20}; do
+        MAX_ATTEMPTS=40
+        ATTEMPT=0
+        
+        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+          ATTEMPT=$((ATTEMPT + 1))
+          
+          # Check if kubectl can connect
           if kubectl cluster-info >/dev/null 2>&1; then
             echo "Kubernetes is ready!"
+            kubectl get nodes
             exit 0
           fi
-          echo "Waiting for Kubernetes... ($i/20)"
+          
+          # Check if API server is responding on typical ports
+          if nc -zv localhost 6443 2>&1 | grep -q succeeded; then
+            echo "Kubernetes API server is listening on port 6443"
+          elif nc -zv localhost 8080 2>&1 | grep -q succeeded; then
+            echo "Kubernetes API server is listening on port 8080"
+          fi
+          
+          echo "Waiting for Kubernetes... ($ATTEMPT/$MAX_ATTEMPTS)"
           sleep 5
         done
+        
         echo "Kubernetes took longer than expected, but continuing..."
         echo "You can check Kubernetes status later with: kubectl cluster-info"
         exit 0
@@ -540,13 +599,24 @@
       register: k8s_ready
       failed_when: false
       ignore_errors: yes
+
+    - name: Pre-pull Kubernetes images for faster startup
+      shell: |
+        echo "Pre-pulling Kubernetes system images..."
+        # These are common images needed by Kubernetes
+        docker pull registry.k8s.io/pause:3.9 2>/dev/null || true
+        docker pull registry.k8s.io/coredns/coredns:v1.11.1 2>/dev/null || true
+        docker pull docker/desktop-storage-provisioner:v2.0 2>/dev/null || true
+        docker pull docker/desktop-vpnkit-controller:dc331cb22850be0cdd97c84a9cfecaf44a1afb6e 2>/dev/null || true
+        echo "Pre-pulled common Kubernetes images"
+      when: k8s_enable is defined and k8s_enable.changed
+      ignore_errors: yes
     
     - name: Display Docker and Kubernetes status
       debug:
         msg: |
           🐳 Docker Status: {{ 'Ready' if (docker_ready is defined and docker_ready.stdout is defined and 'Docker is ready' in docker_ready.stdout) or (docker_startup_ready is defined and docker_startup_ready.stdout is defined and 'Docker is ready' in docker_startup_ready.stdout) else 'Starting (check with: docker info)' }}
-          ⚓ Kubernetes Status: {{ 'Ready' if k8s_ready is defined and k8s_ready.stdout is defined and 'Kubernetes is ready' in k8s_ready.stdout else 'Starting (check with: kubectl cluster-info)' }}
-          {% if docker_ready is defined and docker_ready.stdout is defined and 'longer than expected' in docker_ready.stdout %}
+          Kubernetes Status: {{ 'Ready' if k8s_ready is defined and k8s_ready.stdout is defined and 'Kubernetes is ready' in k8s_ready.stdout else 'Starting (check with: kubectl cluster-info)' }}          {% if docker_ready is defined and docker_ready.stdout is defined and 'longer than expected' in docker_ready.stdout %}
           
           ⚠️  Docker Desktop is taking longer than expected to start.
           
@@ -565,8 +635,32 @@
              2. Go to Settings → Kubernetes
              3. Check "Enable Kubernetes"
              4. Click "Apply & Restart"
+             5. Wait for the "Kubernetes is running" status (this can take 2-5 minutes)
+          
+          Once Kubernetes is running, verify with:
+             kubectl cluster-info
+             kubectl get nodes
           
           This manual step may be required on newer Docker Desktop versions.
+          {% endif %}
+          
+          {% if (k8s_ready is defined and k8s_ready.stdout is defined and 'longer than expected' in k8s_ready.stdout) or (kubeconfig_wait is defined and kubeconfig_wait.failed is defined and kubeconfig_wait.failed) %}
+          
+          ⚠️  Kubernetes initialization requires manual intervention:
+          
+          Docker Desktop's Kubernetes feature needs to download and install components
+          on first run. This process cannot be fully automated via command line.
+          
+          Please follow these steps:
+          1. Open Docker Desktop manually
+          2. Navigate to Settings → Kubernetes
+          3. Ensure "Enable Kubernetes" is checked
+          4. Click "Apply & Restart"
+          5. Wait for the progress bar to complete (usually 2-5 minutes)
+          6. Look for "Kubernetes is running" with a green indicator
+          
+          After manual setup, run the check script to verify:
+             ./check-k8s.sh
           {% endif %}
       when: docker_ready is defined or k8s_ready is defined or docker_startup_ready is defined or k8s_enable is defined
     
@@ -880,38 +974,38 @@
           =========================================
           
           ✅ Core Development Tools:
-          Xcode Command Line Tools: {{ 'Already installed' if xcode_check.rc == 0 else 'Newly installed' }}
-          Homebrew: {{ 'Already installed' if brew_check.rc == 0 else 'Newly installed' }}
-          Git: {{ 'Available' if git_check.rc == 0 else 'Not available' }}
-          Make: {{ 'Already installed' if make_check.rc == 0 else 'Newly installed' }}
+          Xcode Command Line Tools: {{ 'Already installed' if xcode_check is defined and xcode_check.rc == 0 else 'Newly installed' }}
+          Homebrew: {{ 'Already installed' if brew_check is defined and brew_check.rc == 0 else 'Newly installed' }}
+          Git: {{ 'Available' if git_check is defined and git_check.rc == 0 else 'Not available' }}
+          Make: {{ 'Already installed' if make_check is defined and make_check.rc == 0 else 'Newly installed' }}
           
           ✅ Python Development Tools:
-          pyenv (Python version manager): {{ 'Already installed' if pyenv_check.rc == 0 else 'Newly installed' }}
+          pyenv (Python version manager): {{ 'Already installed' if pyenv_check is defined and pyenv_check.rc == 0 else 'Newly installed' }}
           Python 3.13: {{ 'Already installed' if python313_check is defined and python313_check.rc == 0 else ('Newly installed' if python_install is defined and python_install.changed else 'Installed') }}
-          uv (Fast Python package manager): {{ 'Already installed' if uv_check.rc == 0 else 'Newly installed' }}
-          ruff (Python linter/formatter): {{ 'Already installed' if ruff_check.rc == 0 else 'Newly installed' }}
-          pytest (Testing framework): {{ 'Already installed' if pytest_check.rc == 0 else 'Newly installed' }}
-          pytest-cov (Test coverage): {{ 'Already installed' if pytest_cov_check.rc == 0 else 'Newly installed' }}
-          alembic (Database migrations): {{ 'Already installed' if alembic_check.rc == 0 else 'Newly installed' }}
+          uv (Fast Python package manager): {{ 'Already installed' if uv_check is defined and uv_check.rc == 0 else 'Newly installed' }}
+          ruff (Python linter/formatter): {{ 'Already installed' if ruff_check is defined and ruff_check.rc == 0 else 'Newly installed' }}
+          pytest (Testing framework): {{ 'Already installed' if pytest_check is defined and pytest_check.rc == 0 else 'Newly installed' }}
+          pytest-cov (Test coverage): {{ 'Already installed' if pytest_cov_check is defined and pytest_cov_check.rc == 0 else 'Newly installed' }}
+          alembic (Database migrations): {{ 'Already installed' if alembic_check is defined and alembic_check.rc == 0 else 'Newly installed' }}
           
           ✅ DevOps & Infrastructure Tools:
-          helm (Kubernetes package manager): {{ 'Already installed' if helm_check.rc == 0 else 'Newly installed' }}
-          go-task (Task runner): {{ 'Already installed' if go_task_check.rc == 0 else 'Newly installed' }}
-          openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check.rc == 0 else 'Newly installed' }}
-          swagger-codegen (API code generation): {{ 'Already installed' if swagger_codegen_check.rc == 0 else 'Newly installed' }}
-          k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check.rc == 0 else 'Newly installed' }}
-          GitHub CLI (gh): {{ 'Already installed' if gh_check_early.rc == 0 else 'Newly installed' }}
+          helm (Kubernetes package manager): {{ 'Already installed' if helm_check is defined and helm_check.rc == 0 else 'Newly installed' }}
+          go-task (Task runner): {{ 'Already installed' if go_task_check is defined and go_task_check.rc == 0 else 'Newly installed' }}
+          openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check is defined and openapi_generator_check.rc == 0 else 'Newly installed' }}
+          swagger-codegen (API code generation): {{ 'Already installed' if swagger_codegen_check is defined and swagger_codegen_check.rc == 0 else 'Newly installed' }}
+          k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check is defined and k9s_check.rc == 0 else 'Newly installed' }}
+          GitHub CLI (gh): {{ 'Already installed' if gh_check_early is defined and gh_check_early.rc == 0 else 'Newly installed' }}
           
           ✅ Environment & Communication:
-          direnv (Environment manager): {{ 'Already installed' if direnv_check.rc == 0 else 'Newly installed' }}
-          Slack: {{ 'Already installed' if slack_check.rc == 0 else 'Newly installed' }}
-          Google Chrome: {{ 'Already installed' if chrome_check.rc == 0 else 'Newly installed' }}
-          Cursor AI IDE: {{ 'Already installed' if cursor_check.rc == 0 else 'Newly installed' }}
-          GitLens Extension (Cursor): {{ 'Already installed' if gitlens_check.rc == 0 else 'Newly installed' }}
-          Python Extension (Cursor): {{ 'Already installed' if python_ext_check.rc == 0 else 'Newly installed' }}
-          Python Debugger Extension (Cursor): {{ 'Already installed' if python_debugger_check.rc == 0 else 'Newly installed' }}
-          Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
-          Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
+          direnv (Environment manager): {{ 'Already installed' if direnv_check is defined and direnv_check.rc == 0 else 'Newly installed' }}
+          Slack: {{ 'Already installed' if slack_check is defined and slack_check.rc == 0 else 'Newly installed' }}
+          Google Chrome: {{ 'Already installed' if chrome_check is defined and chrome_check.rc == 0 else 'Newly installed' }}
+          Cursor AI IDE: {{ 'Already installed' if cursor_check is defined and cursor_check.rc == 0 else 'Newly installed' }}
+          GitLens Extension (Cursor): {{ 'Already installed' if gitlens_check is defined and gitlens_check.rc == 0 else 'Newly installed' }}
+          Python Extension (Cursor): {{ 'Already installed' if python_ext_check is defined and python_ext_check.rc == 0 else 'Newly installed' }}
+          Python Debugger Extension (Cursor): {{ 'Already installed' if python_debugger_check is defined and python_debugger_check.rc == 0 else 'Newly installed' }}
+          Docker Desktop: {{ 'Already installed' if docker_check is defined and docker_check.rc == 0 else 'Newly installed' }}
+          Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check is defined and k8s_enabled_check.rc == 0 else 'Newly enabled' }}
           
           📂 Repository Details:
           Repository: {{ repo_url }}
