@@ -875,38 +875,38 @@
           =========================================
           
           ✅ Core Development Tools:
-          Xcode Command Line Tools: {{ 'Already installed' if xcode_check.rc == 0 else 'Newly installed' }}
-          Homebrew: {{ 'Already installed' if brew_check.rc == 0 else 'Newly installed' }}
-          Git: {{ 'Available' if git_check.rc == 0 else 'Not available' }}
-          Make: {{ 'Already installed' if make_check.rc == 0 else 'Newly installed' }}
+          Xcode Command Line Tools: {{ 'Already installed' if xcode_check is defined and xcode_check.rc == 0 else 'Newly installed' }}
+          Homebrew: {{ 'Already installed' if brew_check is defined and brew_check.rc == 0 else 'Newly installed' }}
+          Git: {{ 'Available' if git_check is defined and git_check.rc == 0 else 'Not available' }}
+          Make: {{ 'Already installed' if make_check is defined and make_check.rc == 0 else 'Newly installed' }}
           
           ✅ Python Development Tools:
-          pyenv (Python version manager): {{ 'Already installed' if pyenv_check.rc == 0 else 'Newly installed' }}
+          pyenv (Python version manager): {{ 'Already installed' if pyenv_check is defined and pyenv_check.rc == 0 else 'Newly installed' }}
           Python 3.13: {{ 'Already installed' if python313_check is defined and python313_check.rc == 0 else ('Newly installed' if python_install is defined and python_install.changed else 'Installed') }}
-          uv (Fast Python package manager): {{ 'Already installed' if uv_check.rc == 0 else 'Newly installed' }}
-          ruff (Python linter/formatter): {{ 'Already installed' if ruff_check.rc == 0 else 'Newly installed' }}
-          pytest (Testing framework): {{ 'Already installed' if pytest_check.rc == 0 else 'Newly installed' }}
-          pytest-cov (Test coverage): {{ 'Already installed' if pytest_cov_check.rc == 0 else 'Newly installed' }}
-          alembic (Database migrations): {{ 'Already installed' if alembic_check.rc == 0 else 'Newly installed' }}
+          uv (Fast Python package manager): {{ 'Already installed' if uv_check is defined and uv_check.rc == 0 else 'Newly installed' }}
+          ruff (Python linter/formatter): {{ 'Already installed' if ruff_check is defined and ruff_check.rc == 0 else 'Newly installed' }}
+          pytest (Testing framework): {{ 'Already installed' if pytest_check is defined and pytest_check.rc == 0 else 'Newly installed' }}
+          pytest-cov (Test coverage): {{ 'Already installed' if pytest_cov_check is defined and pytest_cov_check.rc == 0 else 'Newly installed' }}
+          alembic (Database migrations): {{ 'Already installed' if alembic_check is defined and alembic_check.rc == 0 else 'Newly installed' }}
           
           ✅ DevOps & Infrastructure Tools:
-          helm (Kubernetes package manager): {{ 'Already installed' if helm_check.rc == 0 else 'Newly installed' }}
-          go-task (Task runner): {{ 'Already installed' if go_task_check.rc == 0 else 'Newly installed' }}
-          openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check.rc == 0 else 'Newly installed' }}
-          swagger-codegen (API code generation): {{ 'Already installed' if swagger_codegen_check.rc == 0 else 'Newly installed' }}
-          k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check.rc == 0 else 'Newly installed' }}
-          GitHub CLI (gh): {{ 'Already installed' if gh_check_early.rc == 0 else 'Newly installed' }}
+          helm (Kubernetes package manager): {{ 'Already installed' if helm_check is defined and helm_check.rc == 0 else 'Newly installed' }}
+          go-task (Task runner): {{ 'Already installed' if go_task_check is defined and go_task_check.rc == 0 else 'Newly installed' }}
+          openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check is defined and openapi_generator_check.rc == 0 else 'Newly installed' }}
+          swagger-codegen (API code generation): {{ 'Already installed' if swagger_codegen_check is defined and swagger_codegen_check.rc == 0 else 'Newly installed' }}
+          k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check is defined and k9s_check.rc == 0 else 'Newly installed' }}
+          GitHub CLI (gh): {{ 'Already installed' if gh_check_early is defined and gh_check_early.rc == 0 else 'Newly installed' }}
           
           ✅ Environment & Communication:
-          direnv (Environment manager): {{ 'Already installed' if direnv_check.rc == 0 else 'Newly installed' }}
-          Slack: {{ 'Already installed' if slack_check.rc == 0 else 'Newly installed' }}
-          Google Chrome: {{ 'Already installed' if chrome_check.rc == 0 else 'Newly installed' }}
-          Cursor AI IDE: {{ 'Already installed' if cursor_check.rc == 0 else 'Newly installed' }}
-          GitLens Extension (Cursor): {{ 'Already installed' if gitlens_check.rc == 0 else 'Newly installed' }}
-          Python Extension (Cursor): {{ 'Already installed' if python_ext_check.rc == 0 else 'Newly installed' }}
-          Python Debugger Extension (Cursor): {{ 'Already installed' if python_debugger_check.rc == 0 else 'Newly installed' }}
-          Docker Desktop: {{ 'Already installed' if docker_check.rc == 0 else 'Newly installed' }}
-          Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check.rc == 0 else 'Newly enabled' }}
+          direnv (Environment manager): {{ 'Already installed' if direnv_check is defined and direnv_check.rc == 0 else 'Newly installed' }}
+          Slack: {{ 'Already installed' if slack_check is defined and slack_check.rc == 0 else 'Newly installed' }}
+          Google Chrome: {{ 'Already installed' if chrome_check is defined and chrome_check.rc == 0 else 'Newly installed' }}
+          Cursor AI IDE: {{ 'Already installed' if cursor_check is defined and cursor_check.rc == 0 else 'Newly installed' }}
+          GitLens Extension (Cursor): {{ 'Already installed' if gitlens_check is defined and gitlens_check.rc == 0 else 'Newly installed' }}
+          Python Extension (Cursor): {{ 'Already installed' if python_ext_check is defined and python_ext_check.rc == 0 else 'Newly installed' }}
+          Python Debugger Extension (Cursor): {{ 'Already installed' if python_debugger_check is defined and python_debugger_check.rc == 0 else 'Newly installed' }}
+          Docker Desktop: {{ 'Already installed' if docker_check is defined and docker_check.rc == 0 else 'Newly installed' }}
+          Kubernetes (Docker Desktop): {{ 'Already enabled' if k8s_enabled_check is defined and k8s_enabled_check.rc == 0 else 'Newly enabled' }}
           
           📂 Repository Details:
           Repository: {{ repo_url }}
