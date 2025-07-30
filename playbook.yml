@@ -743,25 +743,138 @@
           🎉 Platform: macOS Apple Silicon
           
           💡 Next Steps:
-          - Restart your terminal or run: source ~/.zshrc
-          - GitHub CLI is ready! Authentication {{ 'already configured' if gh_auth_status.rc == 0 else 'completed via browser' }}
-          - Python 3.13 is ready! Use 'pyenv global 3.13' to set as default
-          - Use 'pyenv install X.Y.Z' to install additional Python versions
-          - Use 'direnv allow' in project directories with .envrc files
-          - Use 'uv venv' for fast virtual environment creation
-          - Use 'ruff check .' for Python linting and 'ruff format .' for formatting
-          - Use 'pytest' for running tests and 'pytest --cov' for coverage
-          - Use 'alembic init' to set up database migrations
-          - Use 'task --list' to see available tasks (go-task)
-          - Use 'helm' for Kubernetes package management
-          - Use 'openapi-generator' for API code generation
-          - Use 'swagger-codegen' for generating client/server code from Swagger/OpenAPI specs
-          - Use 'docker --version' to verify Docker installation
-          - Use 'kubectl cluster-info' to verify Kubernetes is running
-          - Use 'kubectl get nodes' to see Kubernetes nodes
-          - Use 'k9s' for interactive Kubernetes cluster management
-          - Use 'gh auth login' to authenticate with GitHub
-          - Use 'gh repo clone <repo>' to clone repositories
-          - Start Docker Desktop from Applications or run 'open -a Docker'
+          • Restart your terminal or run: source ~/.zshrc
+          
+          📚 Tool Usage Examples:
+          
+          🐍 Python Development:
+          • pyenv list                        # Show available Python versions
+          • pyenv install 3.12                # Install another Python version
+          • pyenv global 3.13                 # Set Python 3.13 as default
+          • pyenv local 3.12                  # Set Python 3.12 for current project
+          • pyenv versions                    # Show installed Python versions
+          
+          • uv venv                           # Create virtual environment (fast!)
+          • uv pip install -r requirements.txt # Install dependencies
+          • uv pip install package==1.2.3     # Install specific package version
+          • uv pip list                       # List installed packages
+          • uv pip freeze > requirements.txt  # Export dependencies
+          
+          • ruff check .                      # Lint Python code
+          • ruff check . --fix                # Auto-fix linting issues
+          • ruff format .                     # Format Python code
+          • ruff rule E501                    # Show details about a rule
+          
+          • pytest                            # Run all tests
+          • pytest tests/test_module.py       # Run specific test file
+          • pytest -v                         # Verbose test output
+          • pytest --cov                      # Run tests with coverage
+          • pytest --cov=mymodule --cov-report=html  # HTML coverage report
+          • pytest -k "test_name"             # Run tests matching pattern
+          • pytest -x                         # Stop on first failure
+          
+          • alembic init migrations           # Initialize migrations
+          • alembic revision -m "Add user table"  # Create new migration
+          • alembic upgrade head              # Apply all migrations
+          • alembic downgrade -1              # Rollback one migration
+          • alembic history                   # Show migration history
+          
+          🔧 Environment Management:
+          • echo 'layout python' > .envrc     # Auto-activate Python venv
+          • echo 'export API_KEY=secret' >> .envrc  # Set env variables
+          • direnv allow                      # Approve .envrc file
+          • direnv reload                     # Reload environment
+          • direnv status                     # Check direnv status
+          
+          🐙 GitHub CLI:
+          • gh auth login                     # Authenticate with GitHub
+          • gh auth status                    # Check authentication
+          • gh repo create my-project --public # Create new repository
+          • gh repo clone owner/repo          # Clone repository
+          • gh repo fork owner/repo --clone   # Fork and clone
+          • gh pr create --title "Fix bug"    # Create pull request
+          • gh pr list                        # List pull requests
+          • gh issue create --title "Bug report" # Create issue
+          • gh workflow run tests.yml         # Trigger GitHub Action
+          
+          🏗️ Build Tools:
+          • make                              # Run default target
+          • make build                        # Build project
+          • make test                         # Run tests
+          • make clean                        # Clean build artifacts
+          • make help                         # Show available targets
+          
+          • task --list                       # List available tasks
+          • task build                        # Run build task
+          • task test                         # Run test task
+          • task --parallel lint test         # Run tasks in parallel
+          • task --watch                      # Watch for changes
+          
+          🔄 API Development:
+          • openapi-generator list            # List available generators
+          • openapi-generator generate \
+            -i api.yaml \
+            -g python-flask \
+            -o ./server                       # Generate Flask server
+          • openapi-generator generate \
+            -i api.yaml \
+            -g typescript-axios \
+            -o ./client                       # Generate TypeScript client
+          
+          • swagger-codegen generate \
+            -i api.yaml \
+            -l python \
+            -o ./client                       # Generate Python client
+          • swagger-codegen config-help -l python  # Show config options
+          
+          🐳 Docker & Kubernetes:
+          • docker --version                  # Check Docker version
+          • docker ps                         # List running containers
+          • docker images                     # List images
+          • docker build -t myapp .           # Build image
+          • docker run -p 8080:80 myapp       # Run container
+          • docker compose up                 # Start services
+          • docker compose down               # Stop services
+          
+          • kubectl cluster-info              # Check cluster status
+          • kubectl get nodes                 # List cluster nodes
+          • kubectl get pods                  # List pods
+          • kubectl get services              # List services
+          • kubectl apply -f deployment.yaml  # Deploy application
+          • kubectl logs pod-name             # View pod logs
+          • kubectl exec -it pod-name -- bash # Shell into pod
+          
+          • helm repo add bitnami https://charts.bitnami.com/bitnami
+          • helm search repo postgres         # Search for charts
+          • helm install mydb bitnami/postgresql  # Install chart
+          • helm list                         # List releases
+          • helm upgrade mydb bitnami/postgresql  # Upgrade release
+          • helm rollback mydb 1              # Rollback to revision
+          
+          • k9s                               # Launch K9s UI
+          • :pods                             # View pods in k9s
+          • :svc                              # View services in k9s
+          • :ns                               # Switch namespaces
+          • ctrl-a                            # Show all resources
+          • /pattern                          # Search resources
+          
+          💻 IDE (Cursor):
+          • cursor .                          # Open current directory
+          • cursor file.py                    # Open specific file
+          • cursor --list-extensions          # List installed extensions
+          • cursor --install-extension ext-id # Install extension
+          • Cmd+Shift+P                       # Command palette
+          • Cmd+P                             # Quick file open
+          
+          🚀 Quick Start Workflow:
+          1. cd ~/code/my-project
+          2. pyenv local 3.13                 # Set Python version
+          3. uv venv                          # Create virtual env
+          4. echo 'source .venv/bin/activate' > .envrc
+          5. direnv allow                     # Auto-activate venv
+          6. uv pip install -r requirements.txt
+          7. ruff check . --fix && ruff format .
+          8. pytest --cov
+          9. cursor .                         # Open in IDE
           
           This playbook is idempotent - you can safely re-run it anytime! 
