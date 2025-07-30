@@ -364,7 +364,7 @@
         done
         echo "Docker Desktop settings file not found after waiting"
         exit 1
-      when: k8s_enabled_check.stdout == "false" and settings_file_type.stdout == "none"
+      when: k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false" and settings_file_type is defined and settings_file_type.stdout is defined and settings_file_type.stdout == "none"
       register: settings_file_wait
       ignore_errors: yes
     
@@ -377,7 +377,7 @@
         else
           echo "none"
         fi
-      when: k8s_enabled_check.stdout == "false" and settings_file_wait is defined
+      when: k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false" and settings_file_wait is defined
       register: settings_file_type_after_wait
       changed_when: false
     
@@ -446,7 +446,7 @@
           echo "ERROR: No Docker Desktop settings file found"
           exit 1
         fi
-      when: k8s_enabled_check.stdout == "false"
+      when: k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false"
       register: k8s_enable
       ignore_errors: yes
     
@@ -513,7 +513,7 @@
         echo "Docker daemon took longer than expected"
         echo "You may need to manually start Docker Desktop"
         exit 0
-      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required")) or (docker_restart is defined and docker_restart.changed)
+      when: (k8s_enable is defined and k8s_enable.changed) or (docker_start is defined and docker_start.changed and k8s_enabled_check is defined and k8s_enabled_check.stdout is defined and k8s_enabled_check.stdout == "false") or (containerd_enable is defined and containerd_enable.stdout is defined and containerd_enable.stdout is search("enabled - Docker Desktop restart required")) or (docker_restart is defined and docker_restart.changed)
       register: docker_ready
       ignore_errors: yes
       
@@ -546,7 +546,7 @@
         done
         echo "kubectl configuration not found after waiting"
         exit 1
-      when: k8s_enable is defined and k8s_enable.changed and not kubeconfig_check.stat.exists
+      when: k8s_enable is defined and k8s_enable.changed and kubeconfig_check is defined and kubeconfig_check.stat is defined and not kubeconfig_check.stat.exists
       register: kubeconfig_wait
       ignore_errors: yes
 
@@ -559,7 +559,7 @@
           echo "docker-desktop context not found"
           exit 1
         fi
-      when: kubeconfig_wait is succeeded or kubeconfig_check.stat.exists
+      when: (kubeconfig_wait is defined and kubeconfig_wait is succeeded) or (kubeconfig_check is defined and kubeconfig_check.stat is defined and kubeconfig_check.stat.exists)
       ignore_errors: yes
 
     - name: Wait for Kubernetes to be ready (optional)
@@ -642,7 +642,7 @@
           This manual step may be required on newer Docker Desktop versions.
           {% endif %}
           
-          {% if (k8s_ready is defined and k8s_ready.stdout is defined and 'longer than expected' in k8s_ready.stdout) or (kubeconfig_wait is defined and kubeconfig_wait.failed) %}
+          {% if (k8s_ready is defined and k8s_ready.stdout is defined and 'longer than expected' in k8s_ready.stdout) or (kubeconfig_wait is defined and kubeconfig_wait.failed is defined and kubeconfig_wait.failed) %}
           
           ⚠️  Kubernetes initialization requires manual intervention:
           
