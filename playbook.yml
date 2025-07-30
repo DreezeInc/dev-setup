@@ -517,23 +517,96 @@
       register: docker_ready
       ignore_errors: yes
       
+    - name: Force Kubernetes initialization with Docker Desktop restart
+      shell: |
+        echo "Attempting to trigger Kubernetes initialization..."
+        # Sometimes Docker Desktop needs multiple restarts to properly initialize Kubernetes
+        osascript -e 'quit app "Docker Desktop"' 2>/dev/null || true
+        sleep 10
+        open -a "Docker Desktop"
+        sleep 30
+      when: k8s_enable is defined and k8s_enable.changed
+      ignore_errors: yes
+
+    - name: Check for kubectl configuration
+      stat:
+        path: ~/.kube/config
+      register: kubeconfig_check
+      
+    - name: Wait for kubectl configuration to be created
+      shell: |
+        echo "Waiting for kubectl configuration..."
+        for i in {1..30}; do
+          if [ -f "$HOME/.kube/config" ]; then
+            echo "kubectl configuration found!"
+            exit 0
+          fi
+          echo "Waiting for kubectl configuration... ($i/30)"
+          sleep 5
+        done
+        echo "kubectl configuration not found after waiting"
+        exit 1
+      when: k8s_enable is defined and k8s_enable.changed and not kubeconfig_check.stat.exists
+      register: kubeconfig_wait
+      ignore_errors: yes
+
+    - name: Set docker-desktop as default kubectl context
+      shell: |
+        if kubectl config get-contexts docker-desktop >/dev/null 2>&1; then
+          kubectl config use-context docker-desktop
+          echo "Set docker-desktop as default context"
+        else
+          echo "docker-desktop context not found"
+          exit 1
+        fi
+      when: kubeconfig_wait is succeeded or kubeconfig_check.stat.exists
+      ignore_errors: yes
+
     - name: Wait for Kubernetes to be ready (optional)
       shell: |
         echo "Waiting for Kubernetes to start..."
-        for i in {1..20}; do
+        MAX_ATTEMPTS=40
+        ATTEMPT=0
+        
+        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+          ATTEMPT=$((ATTEMPT + 1))
+          
+          # Check if kubectl can connect
           if kubectl cluster-info >/dev/null 2>&1; then
             echo "Kubernetes is ready!"
+            kubectl get nodes
             exit 0
           fi
-          echo "Waiting for Kubernetes... ($i/20)"
+          
+          # Check if API server is responding on typical ports
+          if nc -zv localhost 6443 2>&1 | grep -q succeeded; then
+            echo "Kubernetes API server is listening on port 6443"
+          elif nc -zv localhost 8080 2>&1 | grep -q succeeded; then
+            echo "Kubernetes API server is listening on port 8080"
+          fi
+          
+          echo "Waiting for Kubernetes... ($ATTEMPT/$MAX_ATTEMPTS)"
           sleep 5
         done
+        
         echo "Kubernetes took longer than expected, but continuing..."
         echo "You can check Kubernetes status later with: kubectl cluster-info"
         exit 0
       when: k8s_enable is defined and k8s_enable.changed
       register: k8s_ready
       failed_when: false
+      ignore_errors: yes
+
+    - name: Pre-pull Kubernetes images for faster startup
+      shell: |
+        echo "Pre-pulling Kubernetes system images..."
+        # These are common images needed by Kubernetes
+        docker pull registry.k8s.io/pause:3.9 2>/dev/null || true
+        docker pull registry.k8s.io/coredns/coredns:v1.11.1 2>/dev/null || true
+        docker pull docker/desktop-storage-provisioner:v2.0 2>/dev/null || true
+        docker pull docker/desktop-vpnkit-controller:dc331cb22850be0cdd97c84a9cfecaf44a1afb6e 2>/dev/null || true
+        echo "Pre-pulled common Kubernetes images"
+      when: k8s_enable is defined and k8s_enable.changed
       ignore_errors: yes
     
     - name: Display Docker and Kubernetes status
@@ -560,8 +633,32 @@
              2. Go to Settings → Kubernetes
              3. Check "Enable Kubernetes"
              4. Click "Apply & Restart"
+             5. Wait for the "Kubernetes is running" status (this can take 2-5 minutes)
+          
+          Once Kubernetes is running, verify with:
+             kubectl cluster-info
+             kubectl get nodes
           
           This manual step may be required on newer Docker Desktop versions.
+          {% endif %}
+          
+          {% if (k8s_ready is defined and k8s_ready.stdout is defined and 'longer than expected' in k8s_ready.stdout) or (kubeconfig_wait is defined and kubeconfig_wait.failed) %}
+          
+          ⚠️  Kubernetes initialization requires manual intervention:
+          
+          Docker Desktop's Kubernetes feature needs to download and install components
+          on first run. This process cannot be fully automated via command line.
+          
+          Please follow these steps:
+          1. Open Docker Desktop manually
+          2. Navigate to Settings → Kubernetes
+          3. Ensure "Enable Kubernetes" is checked
+          4. Click "Apply & Restart"
+          5. Wait for the progress bar to complete (usually 2-5 minutes)
+          6. Look for "Kubernetes is running" with a green indicator
+          
+          After manual setup, run the check script to verify:
+             ./check-k8s.sh
           {% endif %}
       when: docker_ready is defined or k8s_ready is defined or docker_startup_ready is defined or k8s_enable is defined
     
