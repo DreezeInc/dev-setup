@@ -770,6 +770,18 @@
     - name: Install k9s via Homebrew (from derailed tap)
       shell: brew install derailed/k9s/k9s
       when: k9s_check.rc != 0
+
+    - name: Check if psql is installed
+      shell: which psql
+      register: psql_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install PostgreSQL (psql) via Homebrew
+      homebrew:
+        name: postgresql
+        state: present
+      when: psql_check.rc != 0
     
 
     
@@ -995,6 +1007,7 @@
           openapi-generator (API tools): {{ 'Already installed' if openapi_generator_check is defined and openapi_generator_check.rc == 0 else 'Newly installed' }}
           swagger-codegen (API code generation): {{ 'Already installed' if swagger_codegen_check is defined and swagger_codegen_check.rc == 0 else 'Newly installed' }}
           k9s (Kubernetes CLI UI): {{ 'Already installed' if k9s_check is defined and k9s_check.rc == 0 else 'Newly installed' }}
+          psql (PostgreSQL client): {{ 'Already installed' if psql_check is defined and psql_check.rc == 0 else 'Newly installed' }}
           GitHub CLI (gh): {{ 'Already installed' if gh_check_early is defined and gh_check_early.rc == 0 else 'Newly installed' }}
           
           ✅ Environment & Communication:
