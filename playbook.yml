@@ -359,7 +359,7 @@
 
     - name: Install PostgreSQL (psql) via Homebrew
       homebrew:
-        name: postgresql
+        name: postgresql@17
         state: present
       when: psql_check.rc != 0
     
