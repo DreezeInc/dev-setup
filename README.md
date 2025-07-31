@@ -192,8 +192,9 @@ This playbook is designed to be **idempotent**, meaning you can safely run it mu
    
    The script will:
    - Ask for your password once at the beginning and cache it for the entire setup duration
-   - Run the main developer environment setup
-   - Ask if you want to install Docker Desktop & Kubernetes (optional)
+   - Ask upfront which components you want to install (main environment and/or Docker/Kubernetes)
+   - Run the entire installation unattended based on your choices
+   - No further interaction needed during installation
 
 ## macOS Apple Silicon Specific Features
 
