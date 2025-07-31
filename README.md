@@ -4,6 +4,7 @@ This Ansible playbook sets up a complete developer environment on macOS Apple Si
 - Installing essential development tools (Xcode Command Line Tools, Homebrew, Make)
 - Installing Python development tools (pyenv, uv, ruff, pytest, pytest-cov, alembic)
 - Installing DevOps & infrastructure tools (helm, go-task, openapi-generator, psql, Docker Desktop)
+- Installing DevOps & infrastructure tools (helm, go-task, openapi-generator, Docker Desktop, DBeaver)
 - Installing environment management tools (direnv)
 - Installing Slack for team communication
 - Installing Google Chrome for web browsing
@@ -97,6 +98,7 @@ You can customize the following variables:
 6. **Checks and installs Slack** - Team communication tool
 7. **Checks and installs Google Chrome** - Web browser
 8. **Checks and installs development tools** - pyenv, direnv, uv, make, jq, helm, go-task, openapi-generator, k9s, psql, gh (GitHub CLI), Docker Desktop
+8. **Checks and installs development tools** - pyenv, direnv, uv, make, jq, helm, go-task, openapi-generator, k9s, DBeaver, gh (GitHub CLI), Docker Desktop
 9. **Installs Python development tools** - ruff, pytest, pytest-cov, alembic via uv
 10. **Configures shell integrations** - Sets up pyenv and direnv in ~/.zshrc (idempotent)
 11. **Installs Python 3.13** - Automatically installs the latest Python version via pyenv
@@ -203,6 +205,7 @@ The playbook intelligently handles different default branch names:
 - **openapi-generator** - OpenAPI code generation tools
 - **k9s** - Interactive Kubernetes CLI dashboard
 - **psql** - PostgreSQL command line client
+- **DBeaver** - Universal database management tool and SQL client
 - **GitHub CLI (gh)** - Official GitHub command line tool
 - **Docker Desktop** - Containerization platform with Kubernetes enabled
 - **direnv** - Environment variable management per directory

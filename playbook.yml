@@ -783,6 +783,19 @@
         state: present
       when: psql_check.rc != 0
     
+    - name: Check if DBeaver is installed
+      shell: ls /Applications/DBeaver.app
+      register: dbeaver_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install DBeaver via Homebrew Cask
+      homebrew_cask:
+        name: dbeaver-community
+        state: present
+      when: dbeaver_check.rc != 0
+      register: dbeaver_install
+    
 
     
     - name: Get home directory
@@ -1113,6 +1126,16 @@
             -l python \
             -o ./client                       # Generate Python client
           • swagger-codegen config-help -l python  # Show config options
+          
+          🗄️ Database Tools:
+          • open -a DBeaver                   # Launch DBeaver
+          • dbeaver                           # Launch from command line (if CLI configured)
+          • # DBeaver tips:
+          • # - Supports MySQL, PostgreSQL, SQLite, Oracle, MongoDB, etc.
+          • # - Create new connection: Database → New Database Connection
+          • # - Import/Export data: Right-click table → Export/Import Data
+          • # - SQL Editor: Ctrl+] or Cmd+] for new SQL editor
+          • # - Auto-complete: Ctrl+Space in SQL editor
           
           🐳 Docker & Kubernetes:
           • docker --version                  # Check Docker version
