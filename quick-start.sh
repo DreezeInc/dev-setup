@@ -118,18 +118,7 @@ else
     echo "⚠️  Google Chrome not found - the playbook will install it"
 fi
 
-# Check if Docker is installed
-if ls /Applications/Docker.app &> /dev/null; then
-    echo "✅ Docker Desktop is already installed"
-    # Check if Kubernetes is enabled
-    if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null; then
-        echo "✅ Kubernetes is enabled and running"
-    else
-        echo "⚠️  Kubernetes not enabled - the playbook will enable it"
-    fi
-else
-    echo "⚠️  Docker Desktop not found - the playbook will install it"
-fi
+
 
 # Check development tools
 echo ""
@@ -227,6 +216,22 @@ echo "======================================="
 run_with_confirmation "🚀 Complete Developer Environment Setup (Recommended)" \
     "ansible-playbook playbook.yml"
 
+# Ask about Docker/Kubernetes setup
+echo ""
+echo "🐳 Docker Desktop & Kubernetes Setup"
+echo "===================================="
+echo "Would you like to install Docker Desktop and enable Kubernetes?"
+echo "This will:"
+echo "  • Install Docker Desktop via Homebrew"
+echo "  • Enable Kubernetes support in Docker Desktop"
+echo "  • Pre-pull common Kubernetes system images"
+echo "  • Configure kubectl to use docker-desktop context"
+echo ""
+echo "Note: Docker Desktop and Kubernetes require significant disk space and resources."
+echo ""
+run_with_confirmation "🐳 Install Docker Desktop & Kubernetes (Optional)" \
+    "ansible-playbook docker-kubernetes-setup.yml"
+
 echo ""
 echo "🎉 Quick start completed!"
 echo "📖 Check README.md for more detailed usage instructions."
@@ -234,7 +239,7 @@ echo ""
 echo "🍎 Features of this Developer Environment Setup:"
 echo "   ✅ Core Development: Xcode CLI Tools, Homebrew, Git, Make"
 echo "   ✅ Python Stack: pyenv, Python 3.13, uv, ruff, pytest, pytest-cov, alembic"
-echo "   ✅ DevOps Tools: helm, go-task, openapi-generator, Docker Desktop"
+echo "   ✅ DevOps Tools: helm, go-task, openapi-generator, k9s"
 echo "   ✅ Environment: direnv for per-project configurations"
 echo "   ✅ Communication: Slack for team collaboration"
 echo "   ✅ Browser: Google Chrome"
@@ -319,32 +324,7 @@ echo "   • openapi-generator generate -i api.yaml -g typescript-axios -o ./cli
 echo "   • swagger-codegen generate -i api.yaml -l python -o ./client"
 echo "   • swagger-codegen config-help -l python  # Show config options"
 echo ""
-echo "🐳 Docker & Kubernetes:"
-echo "   • docker ps                         # List running containers"
-echo "   • docker images                     # List images"
-echo "   • docker build -t myapp .           # Build image"
-echo "   • docker run -p 8080:80 myapp       # Run container"
-echo "   • docker compose up                 # Start services"
-echo "   • docker compose down               # Stop services"
-echo ""
-echo "   • kubectl cluster-info              # Check cluster status"
-echo "   • kubectl get pods                  # List pods"
-echo "   • kubectl get services              # List services"
-echo "   • kubectl apply -f deployment.yaml  # Deploy application"
-echo "   • kubectl logs pod-name             # View pod logs"
-echo "   • kubectl exec -it pod-name -- bash # Shell into pod"
-echo ""
-echo "   • helm repo add bitnami https://charts.bitnami.com/bitnami"
-echo "   • helm search repo postgres         # Search for charts"
-echo "   • helm install mydb bitnami/postgresql  # Install chart"
-echo "   • helm list                         # List releases"
-echo "   • helm upgrade mydb bitnami/postgresql  # Upgrade release"
-echo ""
-echo "   • k9s                               # Launch K9s UI"
-echo "   • :pods (in k9s)                    # View pods"
-echo "   • :svc (in k9s)                     # View services"
-echo "   • ctrl-a (in k9s)                   # Show all resources"
-echo ""
+
 echo "💻 IDE (Cursor):"
 echo "   • cursor .                          # Open current directory"
 echo "   • cursor file.py                    # Open specific file"
