@@ -107,28 +107,7 @@ You can customize the following variables:
 14. **Clones or updates repository** - Downloads or updates the specified GitHub repository
 15. **Provides comprehensive status feedback** - Shows what was accomplished
 
-### Docker & Kubernetes Playbook (docker-kubernetes-setup.yml)
 
-This is a separate optional playbook for installing Docker Desktop and enabling Kubernetes:
-
-1. **Installs jq** - Required for parsing Docker Desktop settings
-2. **Installs Docker Desktop** - Container platform via Homebrew Cask
-3. **Starts Docker Desktop** - Ensures Docker daemon is running
-4. **Enables containerd image store** - Required for newer Docker Desktop versions
-5. **Enables Kubernetes** - Configures local Kubernetes cluster in Docker Desktop
-6. **Configures kubectl** - Sets docker-desktop as default context
-7. **Pre-pulls Kubernetes images** - Downloads common system images for faster startup
-8. **Provides status feedback** - Shows Docker and Kubernetes readiness
-
-To run the Docker/Kubernetes setup:
-```bash
-ansible-playbook docker-kubernetes-setup.yml
-```
-
-To check Docker/Kubernetes status:
-```bash
-./check-k8s.sh
-```
 
 ## Idempotency Features
 
@@ -142,7 +121,7 @@ This playbook is designed to be **idempotent**, meaning you can safely run it mu
 ### Examples of Idempotent Behavior:
 - If Xcode Command Line Tools are already installed → Skips installation
 - If Homebrew exists → Just updates it
-- If development tools (pyenv, direnv, uv, make, helm, go-task, openapi-generator, Docker Desktop) exist → Skips installation
+- If development tools (pyenv, direnv, uv, make, helm, go-task, openapi-generator, k9s) exist → Skips installation
 - If Python tools (ruff, pytest, pytest-cov, alembic) exist → Skips installation
 - If shell integrations are configured → Skips configuration
 - If Python 3.13 is already installed → Skips Python installation
@@ -192,7 +171,7 @@ This playbook is designed to be **idempotent**, meaning you can safely run it mu
    
    The script will:
    - Ask for your password once at the beginning and cache it for the entire setup duration
-   - Ask upfront which components you want to install (main environment and/or Docker/Kubernetes)
+   - Ask if you want to install the developer environment
    - Run the entire installation unattended based on your choices
    - No further interaction needed during installation
 
@@ -233,7 +212,6 @@ The playbook intelligently handles different default branch names:
 - **psql** - PostgreSQL command line client
 - **DBeaver** - Universal database management tool and SQL client
 - **GitHub CLI (gh)** - Official GitHub command line tool
-- **Docker Desktop** - Containerization platform with Kubernetes enabled
 - **direnv** - Environment variable management per directory
 - **Slack** - Team communication and collaboration
 - **Google Chrome** - Web browser for testing

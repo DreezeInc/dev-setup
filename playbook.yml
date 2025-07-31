@@ -269,6 +269,12 @@
       failed_when: false
       changed_when: false
     
+    - name: Check if helm is installed
+      shell: which helm
+      register: helm_check
+      failed_when: false
+      changed_when: false
+    
     - name: Install pyenv via Homebrew
       homebrew:
         name: pyenv
@@ -293,11 +299,11 @@
         state: present
       when: make_check.rc != 0
     
-    - name: Check if helm is installed
-      shell: which helm
-      register: helm_check
-      failed_when: false
-      changed_when: false
+    - name: Install helm via Homebrew
+      homebrew:
+        name: helm
+        state: present
+      when: helm_check.rc != 0
     
     - name: Check if go-task is installed
       shell: which task
@@ -324,12 +330,6 @@
       changed_when: false
     
 
-    
-    - name: Install helm via Homebrew
-      homebrew:
-        name: helm
-        state: present
-      when: helm_check.rc != 0
     
     - name: Install go-task via Homebrew (from go-task tap)
       shell: brew install go-task/tap/go-task
