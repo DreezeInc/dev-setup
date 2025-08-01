@@ -185,13 +185,6 @@ if [[ "$INSTALL_MAIN" == "n" ]]; then
     exit 0
 fi
 
-read -p "Proceed with installation? (Y/n): " -n 1 -r
-echo
-if [[ ! -z $REPLY && ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Installation cancelled."
-    exit 0
-fi
-
 echo ""
 echo "🔧 Setting up prerequisites..."
 echo ""
