@@ -376,6 +376,19 @@
       when: dbeaver_check.rc != 0
       register: dbeaver_install
     
+    - name: Check if Postman is installed
+      shell: ls /Applications/Postman.app
+      register: postman_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Postman via Homebrew Cask
+      homebrew_cask:
+        name: postman
+        state: present
+      when: postman_check.rc != 0
+      register: postman_install
+    
 
     
     - name: Get home directory
@@ -613,6 +626,10 @@
           Python Debugger Extension (Cursor): {{ 'Already installed' if python_debugger_check is defined and python_debugger_check.rc == 0 else 'Newly installed' }}
 
           
+          ✅ Database & API Tools:
+          DBeaver (Database IDE): {{ 'Already installed' if dbeaver_check is defined and dbeaver_check.rc == 0 else 'Newly installed' }}
+          Postman (API Development): {{ 'Already installed' if postman_check is defined and postman_check.rc == 0 else 'Newly installed' }}
+          
           📂 Repository Details:
           Repository: {{ repo_url }}
           Destination: {{ dest_path | expanduser }}
@@ -715,6 +732,18 @@
           • # - Import/Export data: Right-click table → Export/Import Data
           • # - SQL Editor: Ctrl+] or Cmd+] for new SQL editor
           • # - Auto-complete: Ctrl+Space in SQL editor
+          
+          🚀 API Development Tools:
+          • open -a Postman                   # Launch Postman
+          • # Postman tips:
+          • # - Create collections to organize API requests
+          • # - Use environments for different API endpoints (dev, staging, prod)
+          • # - Set up pre-request scripts for authentication tokens
+          • # - Write tests for API responses using JavaScript
+          • # - Generate API documentation from your collections
+          • # - Mock APIs for frontend development
+          • # - Import OpenAPI/Swagger specifications
+          • # - Export collections for team sharing
 
           
           💻 IDE (Cursor):
